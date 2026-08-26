@@ -1,0 +1,159 @@
+<script>
+  (function () {
+    var typeLabelByCode = {};
+
+    // ---- Tabs ----
+    var tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        tabButtons.forEach(function (b) {
+          b.classList.remove('active');
+          b.setAttribute('aria-selected', 'false');
+        });
+        document.querySelectorAll('.tab-panel').forEach(function (p) {
+          p.classList.remove('active');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    // ---- Load media type options ----
+    function loadMediaTypes() {
+      google.script.run
+        .withSuccessHandler(function (types) {
+          var select = document.getElementById('typeOfMedia');
+          types.forEach(function (t) {
+            typeLabelByCode[t.code] = t.label;
+            var opt = document.createElement('option');
+            opt.value = t.code;
+            opt.textContent = t.label;
+            select.appendChild(opt);
+          });
+        })
+        .withFailureHandler(function (err) {
+          showMessage('entry-message', 'โหลดประเภทสื่อไม่สำเร็จ: ' + err.message, 'error');
+        })
+        .getMediaTypes();
+    }
+
+    function showMessage(elId, text, type) {
+      var el = document.getElementById(elId);
+      el.textContent = text;
+      el.className = 'message ' + type;
+      el.hidden = false;
+    }
+
+    function hideMessage(elId) {
+      var el = document.getElementById(elId);
+      el.hidden = true;
+    }
+
+    // ---- Entry form ----
+    var entryForm = document.getElementById('entry-form');
+    var submitBtn = document.getElementById('submit-btn');
+    var resultBox = document.getElementById('result-box');
+    var resultMediaId = document.getElementById('result-media-id');
+
+    entryForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      hideMessage('entry-message');
+      resultBox.hidden = true;
+
+      var formData = {
+        mediaName: document.getElementById('mediaName').value,
+        agencyHouse: document.getElementById('agencyHouse').value,
+        version: document.getElementById('version').value,
+        typeOfMedia: document.getElementById('typeOfMedia').value
+      };
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'กำลังบันทึก...';
+
+      google.script.run
+        .withSuccessHandler(function (record) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'บันทึกข้อมูล';
+          resultMediaId.textContent = record.mediaId;
+          resultBox.hidden = false;
+          entryForm.reset();
+        })
+        .withFailureHandler(function (err) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'บันทึกข้อมูล';
+          showMessage('entry-message', err.message, 'error');
+        })
+        .saveMediaRecord(formData);
+    });
+
+    document.getElementById('reset-btn').addEventListener('click', function () {
+      entryForm.reset();
+      hideMessage('entry-message');
+      resultBox.hidden = true;
+    });
+
+    // ---- Search ----
+    var searchInput = document.getElementById('search-input');
+    var searchBtn = document.getElementById('search-btn');
+    var tbody = document.getElementById('results-tbody');
+    var noResults = document.getElementById('no-results');
+    var table = document.getElementById('results-table');
+
+    function runSearch() {
+      hideMessage('search-message');
+      searchBtn.disabled = true;
+      searchBtn.textContent = 'กำลังค้นหา...';
+
+      google.script.run
+        .withSuccessHandler(function (results) {
+          searchBtn.disabled = false;
+          searchBtn.textContent = 'ค้นหา';
+          renderResults(results);
+        })
+        .withFailureHandler(function (err) {
+          searchBtn.disabled = false;
+          searchBtn.textContent = 'ค้นหา';
+          showMessage('search-message', err.message, 'error');
+        })
+        .searchMediaRecords(searchInput.value);
+    }
+
+    function renderResults(results) {
+      tbody.innerHTML = '';
+      if (!results || results.length === 0) {
+        table.hidden = true;
+        noResults.hidden = false;
+        return;
+      }
+      table.hidden = false;
+      noResults.hidden = true;
+      results.forEach(function (r) {
+        var tr = document.createElement('tr');
+
+        var tdId = document.createElement('td');
+        tdId.textContent = r.mediaId;
+        tr.appendChild(tdId);
+
+        var tdVersion = document.createElement('td');
+        tdVersion.textContent = r.version;
+        tr.appendChild(tdVersion);
+
+        var tdType = document.createElement('td');
+        tdType.textContent = typeLabelByCode[r.typeOfMedia] || r.typeOfMedia;
+        tr.appendChild(tdType);
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    searchBtn.addEventListener('click', runSearch);
+    searchInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') runSearch();
+    });
+
+    loadMediaTypes();
+    // Load full list on first visit to the search tab.
+    runSearch();
+  })();
+</script>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <?!= include('Stylesheet'); ?>
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <h1>Media Records Management</h1>
+    </header>
+
+    <nav class="tabs" role="tablist">
+      <button type="button" class="tab-btn active" data-tab="entry" role="tab" aria-selected="true">กรอกข้อมูล</button>
+      <button type="button" class="tab-btn" data-tab="search" role="tab" aria-selected="false">ค้นหา</button>
+    </nav>
+
+    <main>
+      <!-- Entry Tab -->
+      <section id="tab-entry" class="tab-panel active">
+        <form id="entry-form" class="card">
+          <div class="field">
+            <label for="mediaName">Media Name <span class="req">*</span></label>
+            <input type="text" id="mediaName" name="mediaName" required>
+          </div>
+
+          <div class="field">
+            <label for="agencyHouse">Agency / House <span class="req">*</span></label>
+            <input type="text" id="agencyHouse" name="agencyHouse" required>
+          </div>
+
+          <div class="field">
+            <label for="version">Version <span class="req">*</span></label>
+            <input type="text" id="version" name="version" required>
+          </div>
+
+          <div class="field">
+            <label for="typeOfMedia">Type of Media <span class="req">*</span></label>
+            <select id="typeOfMedia" name="typeOfMedia" required>
+              <option value="" disabled selected>-- เลือกประเภท --</option>
+            </select>
+          </div>
+
+          <div class="actions">
+            <button type="submit" id="submit-btn" class="btn-primary">บันทึกข้อมูล</button>
+            <button type="button" id="reset-btn" class="btn-secondary">ล้างฟอร์ม</button>
+          </div>
+
+          <div id="entry-message" class="message" hidden></div>
+
+          <div id="result-box" class="result-box" hidden>
+            <p>บันทึกสำเร็จ Media ID ที่สร้างขึ้นคือ</p>
+            <div class="media-id" id="result-media-id"></div>
+          </div>
+        </form>
+      </section>
+
+      <!-- Search Tab -->
+      <section id="tab-search" class="tab-panel">
+        <div class="card">
+          <div class="search-row">
+            <input type="text" id="search-input" placeholder="ค้นหาจาก Media Name หรือ Agency / House">
+            <button type="button" id="search-btn" class="btn-primary">ค้นหา</button>
+          </div>
+
+          <div id="search-message" class="message" hidden></div>
+
+          <div class="table-wrap">
+            <table id="results-table">
+              <thead>
+                <tr>
+                  <th>Media ID</th>
+                  <th>Version</th>
+                  <th>Type of Media</th>
+                </tr>
+              </thead>
+              <tbody id="results-tbody"></tbody>
+            </table>
+            <p id="no-results" class="empty-state" hidden>ไม่พบข้อมูล</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <?!= include('JavaScript'); ?>
+</body>
+</html>
