@@ -34,7 +34,38 @@ Version, Type of Media
 
 ### แท็บ ค้นหา
 ค้นหาจาก Media Name หรือ Agency/House (ค้นแบบ partial match, ไม่สนตัวพิมพ์เล็ก/ใหญ่)
-แสดงผลลัพธ์เป็นตาราง: Media ID, Version, Type of Media
+แสดงผลลัพธ์เป็นตาราง: Media ID, Media Name, Agency/House, Version, Type of Media
+(แสดงทั้ง Media Name และ Agency/House เสมอ ไม่ว่าจะค้นด้วยฟิลด์ไหน)
+
+### หน้า Login
+ตรวจสอบ username/password จาก sheet ชื่อ **`user_mng`** ที่มีคอลัมน์:
+
+| username | password | type of user |
+|----------|----------|--------------|
+| user1    | 1234     | All          |
+| user2    | 1234     | Media        |
+| user3    | 1234     | Operation    |
+
+sheet นี้จะถูกสร้างอัตโนมัติ (พร้อม header) เมื่อรันครั้งแรก แต่ **ต้องเพิ่มข้อมูล user เอง**
+ก่อนใช้งานจริง (เข้า sheet โดยตรงแล้วพิมพ์เพิ่มทีละแถว)
+
+สิทธิ์การใช้งานตาม `type of user`:
+
+| type      | กรอกข้อมูล | ค้นหา |
+|-----------|:----------:|:-----:|
+| All       | ✅         | ✅    |
+| Media     | ✅         | ❌    |
+| Operation | ❌         | ✅    |
+
+ระบบซ่อนแท็บที่ไม่มีสิทธิ์ที่หน้าเว็บ และตรวจสอบสิทธิ์ซ้ำที่ฝั่ง server ทุกครั้งที่กด
+บันทึกข้อมูล/ค้นหา (เทียบ username กับ sheet `user_mng` อีกครั้ง) ป้องกันการเรียกฟังก์ชัน
+ตรงๆ โดยข้าม UI
+
+> ⚠️ **ข้อควรระวังด้านความปลอดภัย**: การเก็บ password เป็น plain text ใน Google Sheet
+> ไม่ปลอดภัยสำหรับใช้งานจริงกับข้อมูลสำคัญ เหมาะกับการใช้งานภายในทีมเล็กๆ เท่านั้น
+> ถ้าต้องการความปลอดภัยที่สูงขึ้น แนะนำให้ใช้ Google Workspace SSO
+> (ตรวจสอบ `Session.getActiveUser().getEmail()` แทนการมี username/password เอง) แจ้งได้
+> ถ้าต้องการให้ปรับเป็นแบบนั้น
 
 ## วิธี Deploy
 
@@ -45,6 +76,8 @@ Version, Type of Media
    - `Index.html`
    - `Stylesheet.html`
    - `JavaScript.html`
+   หลังจาก deploy ครั้งแรก ให้เข้าไปเพิ่มข้อมูลผู้ใช้ใน sheet `user_mng`
+   (ดูหัวข้อ "หน้า Login" ด้านบน) ก่อนให้ผู้ใช้จริงเข้าใช้งาน
 4. คัดลอกเนื้อหาจากไฟล์ในโฟลเดอร์นี้ไปวางในแต่ละไฟล์ (สำหรับไฟล์ `.html` ให้สร้างเป็น
    HTML file ใน Apps Script editor)
 5. เปิด **Project Settings** แล้วอัปเดต manifest (`appsscript.json`) ให้ตรงกับไฟล์

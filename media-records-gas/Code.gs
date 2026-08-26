@@ -12,6 +12,10 @@ var MEDIA_TYPES = [
   { code: 'AD', label: 'Advertise (AD)' }
 ];
 
+var USER_SHEET_NAME = 'user_mng';
+var USER_HEADERS = ['username', 'password', 'type of user'];
+var USER_TYPES = ['All', 'Media', 'Operation'];
+
 function doGet(e) {
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
@@ -75,6 +79,8 @@ function generateMediaId_(sheet, typeCode) {
 
 function saveMediaRecord(formData) {
   formData = formData || {};
+  authorize_(formData.username, ['All', 'Media']);
+
   var mediaName = (formData.mediaName || '').toString().trim();
   var agencyHouse = (formData.agencyHouse || '').toString().trim();
   var version = (formData.version || '').toString().trim();
@@ -106,8 +112,11 @@ function saveMediaRecord(formData) {
   }
 }
 
-function searchMediaRecords(keyword) {
-  keyword = (keyword || '').toString().trim().toLowerCase();
+function searchMediaRecords(payload) {
+  payload = payload || {};
+  authorize_(payload.username, ['All', 'Operation']);
+
+  var keyword = (payload.keyword || '').toString().trim().toLowerCase();
   var sheet = getSheet_();
   var lastRow = sheet.getLastRow();
   if (lastRow <= 1) return [];
@@ -134,4 +143,75 @@ function searchMediaRecords(keyword) {
     }
   });
   return results.reverse();
+}
+
+// ---- Authentication (user_mng sheet) ----
+
+function getUserSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(USER_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(USER_SHEET_NAME);
+  }
+  var firstRow = sheet.getRange(1, 1, 1, USER_HEADERS.length).getValues()[0];
+  var hasHeaders = USER_HEADERS.every(function (h, i) {
+    return firstRow[i] === h;
+  });
+  if (!hasHeaders) {
+    sheet.getRange(1, 1, 1, USER_HEADERS.length).setValues([USER_HEADERS]);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function findUser_(username) {
+  username = (username || '').toString().trim();
+  if (!username) return null;
+  var sheet = getUserSheet_();
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return null;
+  var data = sheet.getRange(2, 1, lastRow - 1, USER_HEADERS.length).getValues();
+  for (var i = 0; i < data.length; i++) {
+    if (data[i][0] && data[i][0].toString().trim() === username) {
+      return {
+        username: data[i][0].toString().trim(),
+        password: data[i][1] === undefined || data[i][1] === null ? '' : data[i][1].toString(),
+        type: data[i][2] ? data[i][2].toString().trim() : ''
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * Verifies credentials against the user_mng sheet.
+ * Returns { username, type } on success.
+ */
+function loginUser(username, password) {
+  username = (username || '').toString().trim();
+  password = (password || '').toString();
+  if (!username || !password) {
+    throw new Error('กรุณากรอก Username และ Password');
+  }
+  var user = findUser_(username);
+  if (!user || user.password !== password) {
+    throw new Error('Username หรือ Password ไม่ถูกต้อง');
+  }
+  if (USER_TYPES.indexOf(user.type) === -1) {
+    throw new Error('บัญชีผู้ใช้นี้ไม่มีสิทธิ์การใช้งานที่ถูกต้อง กรุณาติดต่อผู้ดูแลระบบ');
+  }
+  return { username: user.username, type: user.type };
+}
+
+/**
+ * Re-validates a username (already logged in client-side) against the
+ * user_mng sheet before allowing a protected server call, and checks its
+ * type is one of allowedTypes. Throws if not authorized.
+ */
+function authorize_(username, allowedTypes) {
+  var user = findUser_(username);
+  if (!user || allowedTypes.indexOf(user.type) === -1) {
+    throw new Error('ไม่มีสิทธิ์ใช้งานส่วนนี้ กรุณาเข้าสู่ระบบใหม่');
+  }
+  return user;
 }

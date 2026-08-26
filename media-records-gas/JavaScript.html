@@ -1,11 +1,110 @@
 <script>
   (function () {
     var typeLabelByCode = {};
+    var currentUser = null; // { username, type }
 
-    // ---- Tabs ----
+    // Which tabs each user type is allowed to see.
+    var TAB_ACCESS = {
+      All: ['entry', 'search'],
+      Media: ['entry'],
+      Operation: ['search']
+    };
+
+    function showMessage(elId, text, type) {
+      var el = document.getElementById(elId);
+      el.textContent = text;
+      el.className = 'message ' + type;
+      el.hidden = false;
+    }
+
+    function hideMessage(elId) {
+      document.getElementById(elId).hidden = true;
+    }
+
+    // ---- Login ----
+    var loginScreen = document.getElementById('login-screen');
+    var appScreen = document.getElementById('app-screen');
+    var loginForm = document.getElementById('login-form');
+    var loginBtn = document.getElementById('login-btn');
+    var userBar = document.getElementById('user-bar');
+    var userInfo = document.getElementById('user-info');
+
+    loginForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      hideMessage('login-message');
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'กำลังเข้าสู่ระบบ...';
+
+      var username = document.getElementById('login-username').value;
+      var password = document.getElementById('login-password').value;
+
+      google.script.run
+        .withSuccessHandler(function (user) {
+          loginBtn.disabled = false;
+          loginBtn.textContent = 'เข้าสู่ระบบ';
+          onLoginSuccess(user);
+        })
+        .withFailureHandler(function (err) {
+          loginBtn.disabled = false;
+          loginBtn.textContent = 'เข้าสู่ระบบ';
+          showMessage('login-message', err.message, 'error');
+        })
+        .loginUser(username, password);
+    });
+
+    function onLoginSuccess(user) {
+      currentUser = user;
+      loginScreen.hidden = true;
+      appScreen.hidden = false;
+      userBar.hidden = false;
+      userInfo.textContent = user.username + ' (' + user.type + ')';
+      setupTabsForUser(user.type);
+      loadMediaTypes();
+      if ((TAB_ACCESS[user.type] || []).indexOf('search') !== -1) {
+        runSearch();
+      }
+    }
+
+    document.getElementById('logout-btn').addEventListener('click', function () {
+      currentUser = null;
+      loginForm.reset();
+      appScreen.hidden = true;
+      userBar.hidden = true;
+      loginScreen.hidden = false;
+    });
+
+    // ---- Tabs (gated by user type) ----
     var tabButtons = document.querySelectorAll('.tab-btn');
+
+    function setupTabsForUser(type) {
+      var allowed = TAB_ACCESS[type] || [];
+      var firstVisible = null;
+
+      tabButtons.forEach(function (btn) {
+        var isAllowed = allowed.indexOf(btn.dataset.tab) !== -1;
+        btn.hidden = !isAllowed;
+        if (isAllowed && !firstVisible) firstVisible = btn.dataset.tab;
+      });
+
+      tabButtons.forEach(function (b) {
+        b.classList.remove('active');
+        b.setAttribute('aria-selected', 'false');
+      });
+      document.querySelectorAll('.tab-panel').forEach(function (p) {
+        p.classList.remove('active');
+      });
+
+      if (firstVisible) {
+        var activeBtn = document.querySelector('.tab-btn[data-tab="' + firstVisible + '"]');
+        activeBtn.classList.add('active');
+        activeBtn.setAttribute('aria-selected', 'true');
+        document.getElementById('tab-' + firstVisible).classList.add('active');
+      }
+    }
+
     tabButtons.forEach(function (btn) {
       btn.addEventListener('click', function () {
+        if (btn.hidden) return;
         tabButtons.forEach(function (b) {
           b.classList.remove('active');
           b.setAttribute('aria-selected', 'false');
@@ -24,6 +123,7 @@
       google.script.run
         .withSuccessHandler(function (types) {
           var select = document.getElementById('typeOfMedia');
+          select.innerHTML = '<option value="" disabled selected>-- เลือกประเภท --</option>';
           types.forEach(function (t) {
             typeLabelByCode[t.code] = t.label;
             var opt = document.createElement('option');
@@ -38,18 +138,6 @@
         .getMediaTypes();
     }
 
-    function showMessage(elId, text, type) {
-      var el = document.getElementById(elId);
-      el.textContent = text;
-      el.className = 'message ' + type;
-      el.hidden = false;
-    }
-
-    function hideMessage(elId) {
-      var el = document.getElementById(elId);
-      el.hidden = true;
-    }
-
     // ---- Entry form ----
     var entryForm = document.getElementById('entry-form');
     var submitBtn = document.getElementById('submit-btn');
@@ -62,6 +150,7 @@
       resultBox.hidden = true;
 
       var formData = {
+        username: currentUser ? currentUser.username : '',
         mediaName: document.getElementById('mediaName').value,
         agencyHouse: document.getElementById('agencyHouse').value,
         version: document.getElementById('version').value,
@@ -101,6 +190,7 @@
     var table = document.getElementById('results-table');
 
     function runSearch() {
+      if (!currentUser) return;
       hideMessage('search-message');
       searchBtn.disabled = true;
       searchBtn.textContent = 'กำลังค้นหา...';
@@ -116,7 +206,7 @@
           searchBtn.textContent = 'ค้นหา';
           showMessage('search-message', err.message, 'error');
         })
-        .searchMediaRecords(searchInput.value);
+        .searchMediaRecords({ username: currentUser.username, keyword: searchInput.value });
     }
 
     function renderResults(results) {
@@ -130,19 +220,12 @@
       noResults.hidden = true;
       results.forEach(function (r) {
         var tr = document.createElement('tr');
-
-        var tdId = document.createElement('td');
-        tdId.textContent = r.mediaId;
-        tr.appendChild(tdId);
-
-        var tdVersion = document.createElement('td');
-        tdVersion.textContent = r.version;
-        tr.appendChild(tdVersion);
-
-        var tdType = document.createElement('td');
-        tdType.textContent = typeLabelByCode[r.typeOfMedia] || r.typeOfMedia;
-        tr.appendChild(tdType);
-
+        [r.mediaId, r.mediaName, r.agencyHouse, r.version, typeLabelByCode[r.typeOfMedia] || r.typeOfMedia]
+          .forEach(function (value) {
+            var td = document.createElement('td');
+            td.textContent = value;
+            tr.appendChild(td);
+          });
         tbody.appendChild(tr);
       });
     }
@@ -151,9 +234,5 @@
     searchInput.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') runSearch();
     });
-
-    loadMediaTypes();
-    // Load full list on first visit to the search tab.
-    runSearch();
   })();
 </script>

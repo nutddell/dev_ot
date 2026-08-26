@@ -9,14 +9,37 @@
   <div class="app">
     <header class="app-header">
       <h1>Media Records Management</h1>
+      <div id="user-bar" class="user-bar" hidden>
+        <span id="user-info"></span>
+        <button type="button" id="logout-btn" class="btn-link">ออกจากระบบ</button>
+      </div>
     </header>
 
-    <nav class="tabs" role="tablist">
-      <button type="button" class="tab-btn active" data-tab="entry" role="tab" aria-selected="true">กรอกข้อมูล</button>
-      <button type="button" class="tab-btn" data-tab="search" role="tab" aria-selected="false">ค้นหา</button>
-    </nav>
+    <!-- Login Screen -->
+    <section id="login-screen">
+      <form id="login-form" class="card">
+        <div class="field">
+          <label for="login-username">Username <span class="req">*</span></label>
+          <input type="text" id="login-username" name="username" required autocomplete="username">
+        </div>
+        <div class="field">
+          <label for="login-password">Password <span class="req">*</span></label>
+          <input type="password" id="login-password" name="password" required autocomplete="current-password">
+        </div>
+        <div class="actions">
+          <button type="submit" id="login-btn" class="btn-primary">เข้าสู่ระบบ</button>
+        </div>
+        <div id="login-message" class="message" hidden></div>
+      </form>
+    </section>
 
-    <main>
+    <div id="app-screen" hidden>
+      <nav class="tabs" role="tablist">
+        <button type="button" class="tab-btn" data-tab="entry" role="tab" aria-selected="false">กรอกข้อมูล</button>
+        <button type="button" class="tab-btn" data-tab="search" role="tab" aria-selected="false">ค้นหา</button>
+      </nav>
+
+      <main>
       <!-- Entry Tab -->
       <section id="tab-entry" class="tab-panel active">
         <form id="entry-form" class="card">
@@ -71,6 +94,8 @@
               <thead>
                 <tr>
                   <th>Media ID</th>
+                  <th>Media Name</th>
+                  <th>Agency/House</th>
                   <th>Version</th>
                   <th>Type of Media</th>
                 </tr>
@@ -81,7 +106,8 @@
           </div>
         </div>
       </section>
-    </main>
+      </main>
+    </div>
   </div>
 
   <?!= include('JavaScript'); ?>
