@@ -15,6 +15,10 @@
 
   * { box-sizing: border-box; }
 
+  /* Elements with `display` set in this stylesheet (e.g. .user-bar, .tab-panel)
+     would otherwise override the native [hidden] attribute. */
+  [hidden] { display: none !important; }
+
   body {
     margin: 0;
     font-family: 'Segoe UI', Sarabun, Tahoma, Arial, sans-serif;

@@ -60,17 +60,28 @@
       userInfo.textContent = user.username + ' (' + user.type + ')';
       setupTabsForUser(user.type);
       loadMediaTypes();
-      if ((TAB_ACCESS[user.type] || []).indexOf('search') !== -1) {
-        runSearch();
-      }
     }
 
     document.getElementById('logout-btn').addEventListener('click', function () {
       currentUser = null;
+      userInfo.textContent = '';
       loginForm.reset();
+      hideMessage('login-message');
       appScreen.hidden = true;
       userBar.hidden = true;
       loginScreen.hidden = false;
+
+      // Clear entry form state so it doesn't carry over to the next login.
+      entryForm.reset();
+      hideMessage('entry-message');
+      resultBox.hidden = true;
+
+      // Clear search state so results don't carry over to the next login.
+      searchInput.value = '';
+      tbody.innerHTML = '';
+      table.hidden = true;
+      noResults.hidden = true;
+      hideMessage('search-message');
     });
 
     // ---- Tabs (gated by user type) ----
