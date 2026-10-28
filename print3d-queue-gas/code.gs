@@ -6,6 +6,9 @@
 // "3DPrint JOB" spreadsheet
 var SPREADSHEET_ID = '13fuUSHjSdJ7jBUp0AjRi3HIU7Ze7ZNkMsA5sGZir1dg';
 
+// Times are shown in Thai time regardless of the project's time zone setting.
+var TIME_ZONE = 'Asia/Bangkok';
+
 var PRINTER_SHEET = 'Printers';
 var PRINTER_HEADERS = ['Printer ID', 'Name', 'Color 1', 'Color 2', 'Color 3', 'Color 4', 'Created At'];
 
@@ -80,7 +83,7 @@ function withLock_(fn) {
 
 function formatTime_(value) {
   if (!(value instanceof Date)) return value ? value.toString() : '';
-  return Utilities.formatDate(value, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
+  return Utilities.formatDate(value, TIME_ZONE, 'dd/MM/yyyy HH:mm');
 }
 
 function toMillis_(value) {

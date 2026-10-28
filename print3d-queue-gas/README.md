@@ -61,7 +61,7 @@ Web app สำหรับจัดการคิวงานพิมพ์ 3D
    สร้างไฟล์ชื่อ `index` (editor จะแสดงเป็น `index.html`)
 4. คัดลอกเนื้อหาจาก `code.gs` และ `index.html` ในโฟลเดอร์นี้ไปวางแทนของเดิมทั้งหมด
 5. เปิด **Project Settings** > ติ๊ก "Show appsscript.json manifest file" แล้วแก้ให้ตรงกับ
-   `appsscript.json` ในโฟลเดอร์นี้ (timezone `Asia/Bangkok` ใช้สำหรับแสดงเวลา)
+   `appsscript.json` ในโฟลเดอร์นี้ (ไม่บังคับ — เวลาบนหน้าเว็บกำหนดเป็นเวลาไทยไว้ที่ `TIME_ZONE` ใน `code.gs` แล้ว)
 6. กด **Deploy > New deployment**
    - Select type: **Web app**
    - Execute as: **Me** (ทุกคนเขียนลง sheet เดียวกันได้โดยไม่ต้องแชร์สิทธิ์ sheet)
@@ -94,5 +94,8 @@ clasp deploy
 
 - **เปลี่ยนจำนวนช่องสีต่อเครื่อง**: แก้ `COLOR_SLOTS` ทั้งใน `code.gs` และ `index.html`
   และเพิ่มคอลัมน์ `Color N` ใน `PRINTER_HEADERS`
-- **เปลี่ยนรูปแบบเวลา**: แก้ `formatTime_` ใน `code.gs`
+- **เปลี่ยนรูปแบบเวลา**: แก้ `formatTime_` ใน `code.gs` / เปลี่ยน time zone ที่ `TIME_ZONE`
+- **เวลาที่เห็นใน Google Sheet เอง** แสดงตาม time zone ของไฟล์ sheet (File > Settings > Time zone)
+  ซึ่งแยกจากหน้าเว็บ — ถ้าเปลี่ยนเป็น GMT+07:00 แถวที่บันทึกไว้ก่อนหน้าจะคลาดไป 7 ชม.
+  (Sheets เก็บเป็นเวลาตามนาฬิกา ไม่ได้แปลงให้) จึงควรเปลี่ยนตอนที่ยังไม่มีข้อมูลจริง
 - **ความถี่ในการ refresh อัตโนมัติ**: แก้ `REFRESH_MS` ใน `index.html`
