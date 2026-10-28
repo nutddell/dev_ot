@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+<style>
+  :root {
+    --brand-900: #3a1d06;
+    --brand-700: #9a4a0b;
+    --brand-600: #c75f0e;
+    --brand-500: #e8731a;
+    --brand-100: #fdebdc;
+    --bg: #faf7f4;
+    --text: #2a2420;
+    --muted: #776a60;
+    --border: #e8ddd3;
+    --success: #1f8a4c;
+    --printing: #2563eb;
+    --printing-50: #eef4ff;
+    --ready: #16a34a;
+    --ready-50: #ecfdf3;
+    --design: #eab308;
+    --design-50: #fefce8;
+    --danger: #c0392b;
+    --white: #ffffff;
+  }
+
+  * { box-sizing: border-box; }
+
+  /* Elements with `display` set in this stylesheet would otherwise override
+     the native [hidden] attribute. */
+  [hidden] { display: none !important; }
+
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', Sarabun, Tahoma, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  .app {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 24px 16px 48px;
+  }
+
+  .app-header { text-align: center; margin-bottom: 16px; }
+  /* Height drives the size so square and wide logos both fit; the max-width
+     cap keeps a wide logo inside a phone screen. */
+  .app-logo {
+    display: block;
+    margin: 0 auto 4px;
+    height: 112px;
+    width: auto;
+    max-width: min(100%, 420px);
+    object-fit: contain;
+  }
+  @media (max-width: 1366px) { .app-logo { height: 96px; } }  /* notebook */
+  @media (max-width: 600px) { .app-logo { height: 72px; max-width: 80%; } }  /* mobile */
+  .app-header h1 { color: var(--brand-900); font-size: 24px; margin: 8px 0 4px; }
+  .subtitle { color: var(--muted); font-size: 14px; margin: 0; }
+
+  h2 { font-size: 17px; color: var(--brand-900); margin: 20px 0 10px; }
+
+  /* ---- Tabs ---- */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 16px;
+    overflow-x: auto;
+  }
+  .tab {
+    border: none;
+    background: none;
+    padding: 10px 16px;
+    font: inherit;
+    font-size: 15px;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    white-space: nowrap;
+  }
+  .tab:hover { color: var(--brand-700); }
+  .tab.active { color: var(--brand-700); border-bottom-color: var(--brand-500); font-weight: 600; }
+
+  .badge {
+    display: inline-block;
+    min-width: 22px;
+    padding: 1px 7px;
+    border-radius: 11px;
+    background: var(--brand-500);
+    color: var(--white);
+    font-size: 12px;
+    text-align: center;
+  }
+  .badge.muted { background: #b9aca1; }
+  .badge.printing { background: var(--printing); }
+
+  /* ---- Buttons ---- */
+  button { font: inherit; }
+  .btn-primary, .btn-done, .btn-start, .btn-ghost {
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 8px 14px;
+  }
+  .btn-primary { background: var(--brand-500); color: var(--white); border: 1px solid var(--brand-600); }
+  .btn-primary:hover { background: var(--brand-600); }
+  .btn-done { background: var(--success); color: var(--white); border: none; white-space: nowrap; }
+  .btn-done:hover { filter: brightness(0.92); }
+  .btn-start { background: var(--printing); color: var(--white); border: none; white-space: nowrap; }
+  .btn-start:hover { filter: brightness(0.92); }
+  .btn-ghost { background: none; border: 1px solid var(--border); color: var(--muted); padding: 6px 10px; }
+  .btn-ghost:hover { color: var(--danger); border-color: var(--danger); }
+  button:disabled { opacity: 0.55; cursor: wait; }
+
+  /* ---- Messages ---- */
+  .message { padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; font-size: 14px; }
+  .message.error { background: #fdecea; color: var(--danger); border: 1px solid #f5c6c0; }
+  .message.success { background: #e7f6ed; color: var(--success); border: 1px solid #bfe5cd; }
+  .loading { text-align: center; color: var(--muted); padding: 24px; }
+  .hint { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+  .empty { color: var(--muted); text-align: center; padding: 24px; background: var(--white);
+           border: 1px dashed var(--border); border-radius: 10px; }
+
+  .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .section-head h2 { margin: 8px 0; }
+
+  /* ---- Printer cards ---- */
+  .printer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+  }
+  .printer-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .printer-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .printer-name { font-size: 18px; font-weight: 700; color: var(--brand-900); }
+  .printer-count { font-size: 13px; color: var(--muted); }
+
+  .colors { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .color-slot { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .swatch {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    max-width: 56px;
+    border-radius: 10px;
+    border: 2px solid rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+  }
+  .swatch.empty {
+    border: 2px dashed #cbbcae;
+    background: repeating-linear-gradient(45deg, #fff, #fff 5px, #f3ece6 5px, #f3ece6 10px);
+  }
+  .swatch.empty::after {
+    content: '+';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #b9aca1;
+    font-size: 22px;
+  }
+  /* The native picker sits invisibly on top of the swatch so a click opens it. */
+  .swatch input[type="color"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    border: none;
+    padding: 0;
+  }
+  .swatch.saving { opacity: 0.5; }
+  .color-label { font-size: 11px; color: var(--muted); font-family: Consolas, monospace; }
+  .color-clear {
+    border: none;
+    background: none;
+    color: var(--muted);
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+  }
+  .color-clear:hover { color: var(--danger); }
+
+  .printer-card.is-printing { border-color: var(--printing); box-shadow: 0 0 0 1px var(--printing); }
+  .status-pill { font-size: 12px; padding: 2px 10px; border-radius: 11px; white-space: nowrap; }
+  .status-pill.printing { background: var(--printing); color: var(--white); }
+  .status-pill.idle { background: #ece5df; color: var(--muted); }
+  .printer-status { font-size: 14px; display: flex; flex-direction: column; gap: 4px;
+                    border-top: 1px solid var(--border); padding-top: 10px; overflow-wrap: anywhere; }
+  .muted { color: var(--muted); font-size: 13px; }
+
+  .dash-actions { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+  a.btn-link { display: inline-block; text-decoration: none; }
+  @media (max-width: 600px) { .dash-actions a.btn-link { width: 100%; text-align: center; padding: 10px 14px; } }
+
+  /* ---- Page links (queue / orders) ---- */
+  .page-nav { display: inline-flex; gap: 4px; margin-top: 12px; padding: 4px;
+              background: var(--white); border: 1px solid var(--border); border-radius: 999px; }
+  .page-nav a { padding: 6px 16px; border-radius: 999px; color: var(--muted); text-decoration: none; font-size: 14px; }
+  .page-nav a:hover { color: var(--brand-700); }
+  .page-nav a.active { background: var(--brand-500); color: var(--white); }
+
+  /* ---- Pending tab: form + table on the left, ready orders on the right ---- */
+  .pending-layout:not([hidden]) {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-areas: "form" "orders" "table";
+    gap: 0 18px;
+  }
+  @media (min-width: 900px) {
+    .pending-layout:not([hidden]) {
+      grid-template-columns: minmax(0, 1fr) 320px;
+      grid-template-areas: "form orders" "table orders";
+      align-items: start;
+    }
+  }
+  .pending-layout .job-form { grid-area: form; }
+  .pending-layout .pending-table { grid-area: table; }
+  .order-panel { grid-area: orders; background: var(--white); border: 1px solid var(--border);
+                 border-top: 4px solid var(--ready); border-radius: 12px; padding: 4px 14px 10px; margin-top: 16px; }
+  @media (min-width: 900px) { .order-panel { margin-top: 0; } }
+  .order-panel h2 { display: flex; align-items: center; gap: 8px; margin: 12px 0 4px; }
+  .badge.ready { background: var(--ready); }
+  .ready-list { list-style: none; margin: 0; padding: 0; }
+  .ready-list li { padding: 10px 0; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+  .ready-list li:last-child { border-bottom: none; }
+  .ready-list .none { color: var(--muted); font-size: 13px; text-align: center; }
+  .ready-list .order-title { font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
+  .ready-list .order-meta { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .ready-list .order-queue { display: flex; gap: 6px; }
+  .ready-list select { flex: 1; min-width: 0; font-size: 14px; padding: 6px 8px; }
+  .ready-list .btn-start { padding: 6px 10px; font-size: 13px; }
+  .order-dots { display: inline-flex; gap: 3px; vertical-align: middle; margin-left: 6px; }
+  .order-dots .dot { width: 12px; height: 12px; }
+
+  /* ---- Dashboard monitor (printing / pending lists) ---- */
+  .monitor { display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 8px; }
+  @media (min-width: 900px) { .monitor { grid-template-columns: 1fr 1fr; align-items: start; } }
+  .monitor-col { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 4px 14px 8px; }
+  .monitor-col.printing { border-top: 4px solid var(--printing); background: var(--printing-50); }
+  .monitor-col.pending { border-top: 4px solid var(--brand-500); }
+  .monitor-col h2 { margin: 12px 0 6px; display: flex; align-items: center; gap: 8px; }
+  .job-list { list-style: none; margin: 0; padding: 0; }
+  .job-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .job-list li:last-child { border-bottom: none; }
+  .job-list .job-text { flex: 1; min-width: 0; }
+  .job-list .job-title { display: block; font-weight: 600; overflow-wrap: anywhere; }
+  .job-list .job-meta { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .job-list .job-actions button { padding: 6px 10px; font-size: 13px; }
+  .job-list .none { color: var(--muted); font-size: 13px; justify-content: center; }
+  .printer-foot { display: flex; justify-content: flex-end; }
+
+  /* ---- Job form ---- */
+  .card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .job-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field.grow { flex: 1 1 260px; }
+  .field label { font-size: 13px; color: var(--muted); }
+  .req { color: var(--danger); }
+  input[type="text"], select {
+    font: inherit;
+    font-size: 15px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--white);
+    min-width: 160px;
+  }
+  input[type="text"]:focus, select:focus { outline: 2px solid var(--brand-100); border-color: var(--brand-500); }
+
+  /* ---- Tables ---- */
+  .table-wrap { overflow-x: auto; background: var(--white); border: 1px solid var(--border); border-radius: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  th { background: var(--brand-100); color: var(--brand-900); font-weight: 600; white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: none; }
+  td.nowrap { white-space: nowrap; }
+  td.actions { white-space: nowrap; text-align: right; }
+  td.actions button + button { margin-left: 6px; }
+  .printer-chip { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .dots { display: inline-flex; gap: 2px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.2); }
+
+  @media (max-width: 600px) {
+    .job-form .field, .job-form select, .job-form button { width: 100%; }
+    .tabs { display: grid; grid-template-columns: 1fr 1fr; overflow: visible; }
+    .tab { padding: 10px 6px; font-size: 14px; }
+
+    /* Tables become one card per row so the action buttons stay on screen. */
+    .table-wrap { background: none; border: none; overflow: visible; }
+    table thead { display: none; }
+    table, tbody, tr, td { display: block; width: 100%; }
+    tbody tr { background: var(--white); border: 1px solid var(--border); border-radius: 12px;
+               padding: 6px 12px; margin-bottom: 10px; }
+    td { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0;
+         border-bottom: 1px dashed var(--border); text-align: right; }
+    td::before { content: attr(data-label); color: var(--muted); font-size: 13px; text-align: left; }
+    td.actions { justify-content: flex-end; border-bottom: none; padding-top: 10px; }
+    td.actions::before { content: none; }
+  }
+
+  /* ---- Order page ---- */
+  .order-form { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  @media (min-width: 700px) {
+    .order-form { grid-template-columns: 180px 200px 1fr; }
+    .order-form .span-all { grid-column: 1 / -1; }
+  }
+  .order-form input[type="date"], .order-form input[type="text"], .order-form select { width: 100%; min-width: 0; }
+  input[type="date"] { font: inherit; font-size: 15px; padding: 7px 10px; border: 1px solid var(--border);
+                       border-radius: 8px; background: var(--white); }
+  .order-form .colors { max-width: 320px; }
+  .status-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .status-choice label {
+    display: flex; align-items: center; gap: 8px; cursor: pointer;
+    padding: 10px 12px; border-radius: 10px; border: 2px solid var(--border); background: var(--white); font-size: 14px;
+  }
+  .status-choice input { accent-color: currentColor; }
+  @media (max-width: 480px) { .status-choice { grid-template-columns: 1fr; } }
+  .status-choice label.design { color: #8a6100; }
+  .status-choice label.ready { color: #15803d; }
+  .status-choice label.design:has(input:checked) { border-color: var(--design); background: var(--design-50); }
+  .status-choice label.ready:has(input:checked) { border-color: var(--ready); background: var(--ready-50); }
+  .form-actions { display: flex; justify-content: flex-end; }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+  .filters button { border: 1px solid var(--border); background: var(--white); color: var(--muted);
+                    border-radius: 999px; padding: 6px 14px; cursor: pointer; font-size: 14px; }
+  .filters button.active { background: var(--brand-500); border-color: var(--brand-600); color: var(--white); }
+
+  .order-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+  .order-card { background: var(--white); border: 3px solid var(--border); border-radius: 12px; padding: 12px 14px;
+                display: flex; flex-direction: column; gap: 10px; }
+  .order-card.design { border-color: var(--design); }
+  .order-card.ready { border-color: var(--ready); }
+  .order-card.queued { border-color: #cfc6be; background: #fbfaf9; }
+  .order-card .order-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .order-card .order-type { font-weight: 700; color: var(--brand-900); font-size: 15px; }
+  .order-card .order-detail { overflow-wrap: anywhere; font-size: 15px; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .seg button { border: 2px solid var(--border); background: var(--white); border-radius: 8px; padding: 7px 6px;
+                cursor: pointer; font-size: 13px; color: var(--muted); }
+  .seg button.design.on { border-color: var(--design); background: var(--design-50); color: #8a6100; font-weight: 600; }
+  .seg button.ready.on { border-color: var(--ready); background: var(--ready-50); color: #15803d; font-weight: 600; }
+  .queued-info { font-size: 13px; color: var(--muted); background: #f3eeea; border-radius: 8px; padding: 8px 10px; }
+  .order-foot { display: flex; justify-content: flex-end; }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <img class="app-logo" alt="3D Print Queue logo"
+           src="https://lh3.googleusercontent.com/d/1TCIgIjY4dLXY08wZIjGq2cNA7bv19rIx=h300"
+           onerror="this.hidden = true">
+      <h1>คำสั่งงาน</h1>
+      <p class="subtitle">บันทึกคำสั่งงานก่อนส่งเข้าคิวพิมพ์</p>
+      <nav class="page-nav">
+        <a href="<?= appUrl ?>" target="_top">🖨️ คิวงานพิมพ์</a>
+        <a class="active" href="<?= appUrl ?>?page=order" target="_top">📝 คำสั่งงาน</a>
+      </nav>
+    </header>
+
+    <div id="message" class="message" hidden></div>
+
+    <form id="order-form" class="card order-form">
+      <div class="field">
+        <label for="order-date">วันที่ <span class="req">*</span></label>
+        <input type="date" id="order-date" required>
+      </div>
+      <div class="field">
+        <label for="order-type">ชนิดของงาน <span class="req">*</span></label>
+        <select id="order-type" required>
+          <option value="">-- เลือกชนิดงาน --</option>
+          <option value="พวงกุญแจ">พวงกุญแจ</option>
+          <option value="Key cap">Key cap</option>
+          <option value="อื่นๆ">อื่นๆ</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="order-detail">รายละเอียดงาน <span class="req">*</span></label>
+        <input type="text" id="order-detail" required placeholder="เช่น ชื่อลูกค้า / ข้อความ / จำนวน">
+      </div>
+      <div class="field span-all">
+        <label>สีที่อยากได้ (สูงสุด 4 สี)</label>
+        <div id="form-colors" class="colors"></div>
+      </div>
+      <div class="field span-all">
+        <label>สถานะ <span class="req">*</span></label>
+        <div class="status-choice">
+          <label class="design"><input type="radio" name="order-status" value="design" checked> 🟨 รอการออกแบบ</label>
+          <label class="ready"><input type="radio" name="order-status" value="ready"> 🟩 ส่งเข้าคิวพิมพ์งาน</label>
+        </div>
+      </div>
+      <div class="form-actions span-all">
+        <button type="submit" id="order-submit" class="btn-primary">บันทึกคำสั่งงาน</button>
+      </div>
+    </form>
+
+    <h2>รายการคำสั่งงาน</h2>
+    <div class="filters" id="filters">
+      <button type="button" data-filter="active" class="active">กำลังดำเนินการ <span data-count="active"></span></button>
+      <button type="button" data-filter="design">🟨 รอการออกแบบ <span data-count="design"></span></button>
+      <button type="button" data-filter="ready">🟩 ส่งเข้าคิวพิมพ์งาน <span data-count="ready"></span></button>
+      <button type="button" data-filter="queued">เข้าคิวแล้ว <span data-count="queued"></span></button>
+      <button type="button" data-filter="all">ทั้งหมด <span data-count="all"></span></button>
+    </div>
+    <div id="loading" class="loading">กำลังโหลดข้อมูล...</div>
+    <div id="order-grid" class="order-grid"></div>
+    <p id="order-empty" class="empty" hidden>ไม่มีคำสั่งงานในหมวดนี้</p>
+  </div>
+
+<script>
+  (function () {
+    var COLOR_SLOTS = 4;
+    // Initial value of an unused slot's picker. Deliberately an odd shade so
+    // picking plain black/white still fires a `change` event.
+    var EMPTY_PICKER_VALUE = '#808081';
+    var REFRESH_MS = 60000;
+    var STATUS_LABEL = { design: 'รอการออกแบบ', ready: 'ส่งเข้าคิวพิมพ์งาน', queued: 'เข้าคิวแล้ว' };
+
+    var state = { orders: [], pending: [], printing: [], done: [] };
+    var filter = 'active';
+    var formColors = ['', '', '', ''];
+    var busy = 0;
+
+    // ---- Helpers ----
+
+    function $(id) { return document.getElementById(id); }
+
+    function el(tag, props, children) {
+      var node = document.createElement(tag);
+      Object.keys(props || {}).forEach(function (key) {
+        if (key === 'className') node.className = props[key];
+        else if (key === 'text') node.textContent = props[key];
+        else if (key === 'style') node.setAttribute('style', props[key]);
+        else if (key.indexOf('on') === 0) node.addEventListener(key.slice(2), props[key]);
+        else node.setAttribute(key, props[key]);
+      });
+      (children || []).forEach(function (child) {
+        if (child) node.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
+      });
+      return node;
+    }
+
+    var messageTimer = null;
+    function showMessage(text, type) {
+      var box = $('message');
+      box.textContent = text;
+      box.className = 'message ' + type;
+      box.hidden = false;
+      clearTimeout(messageTimer);
+      messageTimer = setTimeout(function () { box.hidden = true; }, type === 'error' ? 8000 : 3000);
+    }
+
+    function call(fnName, args, onDone) {
+      busy++;
+      var runner = google.script.run
+        .withSuccessHandler(function (data) {
+          busy--;
+          render(data);
+          if (onDone) onDone(true);
+        })
+        .withFailureHandler(function (err) {
+          busy--;
+          showMessage(err.message || String(err), 'error');
+          if (onDone) onDone(false);
+        });
+      runner[fnName].apply(runner, args || []);
+    }
+
+    function today() {
+      var d = new Date();
+      return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+    }
+
+    function formatDate(isoDate) {
+      var p = (isoDate || '').split('-');
+      return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : isoDate;
+    }
+
+    /** One color slot: swatch with the native picker on top, hex label and a clear link. */
+    function colorSlot(color, index, onPick) {
+      var swatch = el('label', {
+        className: 'swatch' + (color ? '' : ' empty'),
+        style: color ? 'background:' + color : '',
+        title: color ? 'สี ' + (index + 1) + ': ' + color + ' (คลิกเพื่อเปลี่ยน)' : 'สี ' + (index + 1) + ': คลิกเพื่อเลือกสี'
+      });
+      var input = el('input', { type: 'color' });
+      input.value = color || EMPTY_PICKER_VALUE;
+      input.addEventListener('change', function () { onPick(input.value, swatch); });
+      swatch.appendChild(input);
+
+      var children = [swatch, el('span', { className: 'color-label', text: color ? color.toUpperCase() : 'ว่าง' })];
+      if (color) {
+        children.push(el('button', {
+          type: 'button', className: 'color-clear', text: 'ล้าง',
+          onclick: function () { onPick('', swatch); }
+        }));
+      }
+      return el('div', { className: 'color-slot' }, children);
+    }
+
+    /** Where a queued order's print job is now. */
+    function jobStage(jobId) {
+      function has(list) { return list.some(function (j) { return j.id === jobId; }); }
+      if (has(state.printing)) return 'กำลังพิมพ์';
+      if (has(state.pending)) return 'รอพิมพ์';
+      if (has(state.done)) return 'พิมพ์เสร็จแล้ว';
+      return '';
+    }
+
+    // ---- Rendering ----
+
+    function renderFormColors() {
+      var box = $('form-colors');
+      box.innerHTML = '';
+      formColors.forEach(function (color, i) {
+        box.appendChild(colorSlot(color, i, function (value) {
+          formColors[i] = value;
+          renderFormColors();
+        }));
+      });
+    }
+
+    function render(data) {
+      state = data;
+      $('loading').hidden = true;
+      var counts = { active: 0, design: 0, ready: 0, queued: 0, all: data.orders.length };
+      data.orders.forEach(function (o) {
+        counts[o.status] = (counts[o.status] || 0) + 1;
+        if (o.status !== 'queued') counts.active++;
+      });
+      Object.keys(counts).forEach(function (key) {
+        document.querySelector('[data-count="' + key + '"]').textContent = '(' + counts[key] + ')';
+      });
+      renderOrders();
+    }
+
+    function renderOrders() {
+      var grid = $('order-grid');
+      grid.innerHTML = '';
+      var orders = state.orders.filter(function (o) {
+        if (filter === 'all') return true;
+        if (filter === 'active') return o.status !== 'queued';
+        return o.status === filter;
+      });
+      $('order-empty').hidden = orders.length > 0;
+      orders.forEach(function (order) { grid.appendChild(orderCard(order)); });
+    }
+
+    function orderCard(order) {
+      var slots = order.colors.map(function (color, i) {
+        return colorSlot(color, i, function (value, swatch) {
+          var colors = order.colors.slice();
+          colors[i] = value;
+          swatch.classList.add('saving');
+          call('updateOrderColors', [order.id, colors], function (ok) {
+            if (ok) showMessage('บันทึกสีแล้ว', 'success');
+            else swatch.classList.remove('saving');
+          });
+        });
+      });
+
+      var statusArea;
+      if (order.status === 'queued') {
+        var stage = jobStage(order.jobId);
+        statusArea = el('div', {
+          className: 'queued-info',
+          text: '✓ เข้าคิวพิมพ์แล้ว · เครื่อง ' + order.printerName + (stage ? ' · ' + stage : '')
+        });
+      } else {
+        statusArea = el('div', { className: 'seg' }, ['design', 'ready'].map(function (status) {
+          return el('button', {
+            type: 'button',
+            className: status + (order.status === status ? ' on' : ''),
+            text: (status === 'design' ? '🟨 ' : '🟩 ') + STATUS_LABEL[status],
+            onclick: function (e) {
+              if (order.status === status) return;
+              e.currentTarget.disabled = true;
+              call('updateOrderStatus', [order.id, status], function (ok) {
+                if (ok) showMessage('เปลี่ยนสถานะเป็น "' + STATUS_LABEL[status] + '" แล้ว' +
+                  (status === 'ready' ? ' — ไปกดเพิ่มเข้าคิวได้ที่หน้าคิวงานพิมพ์ แท็บงานค้างพิมพ์' : ''), 'success');
+              });
+            }
+          });
+        }));
+      }
+
+      var children = [
+        el('div', { className: 'order-head' }, [
+          el('span', { className: 'order-type', text: order.type }),
+          el('span', { text: formatDate(order.date) })
+        ]),
+        el('div', { className: 'order-detail', text: order.detail }),
+        el('div', { className: 'colors' }, slots),
+        statusArea
+      ];
+      if (order.status !== 'queued') {
+        children.push(el('div', { className: 'order-foot' }, [el('button', {
+          type: 'button',
+          className: 'btn-ghost',
+          text: 'ลบ',
+          onclick: function (e) {
+            if (!confirm('ลบคำสั่งงาน "' + order.type + ': ' + order.detail + '" ?')) return;
+            e.currentTarget.disabled = true;
+            call('deleteOrder', [order.id], function (ok) { if (ok) showMessage('ลบคำสั่งงานแล้ว', 'success'); });
+          }
+        })]));
+      }
+      return el('div', { className: 'order-card ' + order.status }, children);
+    }
+
+    // ---- Events ----
+
+    $('filters').addEventListener('click', function (e) {
+      var btn = e.target.closest('button');
+      if (!btn) return;
+      filter = btn.dataset.filter;
+      document.querySelectorAll('#filters button').forEach(function (b) { b.classList.toggle('active', b === btn); });
+      renderOrders();
+    });
+
+    $('order-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var order = {
+        date: $('order-date').value,
+        type: $('order-type').value,
+        detail: $('order-detail').value.trim(),
+        colors: formColors.slice(),
+        status: document.querySelector('input[name="order-status"]:checked').value
+      };
+      if (!order.date || !order.type || !order.detail) return;
+      var btn = $('order-submit');
+      btn.disabled = true;
+      call('addOrder', [order], function (ok) {
+        btn.disabled = false;
+        if (!ok) return;
+        showMessage('บันทึกคำสั่งงาน "' + order.type + ': ' + order.detail + '" แล้ว' +
+          (order.status === 'ready' ? ' — รอเพิ่มเข้าคิวที่หน้าคิวงานพิมพ์' : ''), 'success');
+        $('order-detail').value = '';
+        formColors = ['', '', '', ''];
+        renderFormColors();
+        $('order-detail').focus();
+      });
+    });
+
+    $('order-date').value = today();
+    renderFormColors();
+
+    setInterval(function () {
+      if (busy === 0 && !document.hidden) call('getData');
+    }, REFRESH_MS);
+
+    call('getData');
+  })();
+</script>
+</body>
+</html>

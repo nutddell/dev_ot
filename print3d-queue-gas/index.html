@@ -17,6 +17,7 @@
     --success: #1f8a4c;
     --printing: #2563eb;
     --printing-50: #eef4ff;
+    --ready: #16a34a;
     --danger: #c0392b;
     --white: #ffffff;
   }
@@ -200,6 +201,50 @@
                     border-top: 1px solid var(--border); padding-top: 10px; overflow-wrap: anywhere; }
   .muted { color: var(--muted); font-size: 13px; }
 
+  .dash-actions { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+  a.btn-link { display: inline-block; text-decoration: none; }
+  @media (max-width: 600px) { .dash-actions a.btn-link { width: 100%; text-align: center; padding: 10px 14px; } }
+
+  /* ---- Page links (queue / orders) ---- */
+  .page-nav { display: inline-flex; gap: 4px; margin-top: 12px; padding: 4px;
+              background: var(--white); border: 1px solid var(--border); border-radius: 999px; }
+  .page-nav a { padding: 6px 16px; border-radius: 999px; color: var(--muted); text-decoration: none; font-size: 14px; }
+  .page-nav a:hover { color: var(--brand-700); }
+  .page-nav a.active { background: var(--brand-500); color: var(--white); }
+
+  /* ---- Pending tab: form + table on the left, ready orders on the right ---- */
+  .pending-layout:not([hidden]) {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-areas: "form" "orders" "table";
+    gap: 0 18px;
+  }
+  @media (min-width: 900px) {
+    .pending-layout:not([hidden]) {
+      grid-template-columns: minmax(0, 1fr) 320px;
+      grid-template-areas: "form orders" "table orders";
+      align-items: start;
+    }
+  }
+  .pending-layout .job-form { grid-area: form; }
+  .pending-layout .pending-table { grid-area: table; }
+  .order-panel { grid-area: orders; background: var(--white); border: 1px solid var(--border);
+                 border-top: 4px solid var(--ready); border-radius: 12px; padding: 4px 14px 10px; margin-top: 16px; }
+  @media (min-width: 900px) { .order-panel { margin-top: 0; } }
+  .order-panel h2 { display: flex; align-items: center; gap: 8px; margin: 12px 0 4px; }
+  .badge.ready { background: var(--ready); }
+  .ready-list { list-style: none; margin: 0; padding: 0; }
+  .ready-list li { padding: 10px 0; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+  .ready-list li:last-child { border-bottom: none; }
+  .ready-list .none { color: var(--muted); font-size: 13px; text-align: center; }
+  .ready-list .order-title { font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
+  .ready-list .order-meta { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .ready-list .order-queue { display: flex; gap: 6px; }
+  .ready-list select { flex: 1; min-width: 0; font-size: 14px; padding: 6px 8px; }
+  .ready-list .btn-start { padding: 6px 10px; font-size: 13px; }
+  .order-dots { display: inline-flex; gap: 3px; vertical-align: middle; margin-left: 6px; }
+  .order-dots .dot { width: 12px; height: 12px; }
+
   /* ---- Dashboard monitor (printing / pending lists) ---- */
   .monitor { display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 8px; }
   @media (min-width: 900px) { .monitor { grid-template-columns: 1fr 1fr; align-items: start; } }
@@ -284,6 +329,10 @@
            onerror="this.hidden = true">
       <h1>3D Print Queue</h1>
       <p class="subtitle">จัดการคิวงานพิมพ์ 3D และสีเส้นพลาสติกประจำเครื่อง</p>
+      <nav class="page-nav">
+        <a class="active" href="<?= appUrl ?>" target="_top">🖨️ คิวงานพิมพ์</a>
+        <a href="<?= appUrl ?>?page=order" target="_top">📝 คำสั่งงาน</a>
+      </nav>
     </header>
 
     <nav class="tabs" role="tablist">
@@ -298,6 +347,9 @@
 
     <!-- Dashboard: what is printing, what is waiting, then the printers -->
     <section id="tab-dashboard" class="tab-panel">
+      <div class="dash-actions">
+        <a class="btn-primary btn-link" href="<?= appUrl ?>?page=order" target="_top">📝 + สร้างคำสั่งงาน</a>
+      </div>
       <div class="monitor">
         <div class="monitor-col printing">
           <h2>🖨️ กำลังพิมพ์ <span class="badge printing" data-count="printing">0</span></h2>
@@ -319,7 +371,7 @@
     </section>
 
     <!-- Pending: add a job + all jobs waiting to print -->
-    <section id="tab-pending" class="tab-panel" hidden>
+    <section id="tab-pending" class="tab-panel pending-layout" hidden>
       <form id="job-form" class="card job-form">
         <div class="field grow">
           <label for="job-title">ชื่องาน <span class="req">*</span></label>
@@ -334,16 +386,25 @@
         </div>
       </form>
 
-      <h2>รายการรวมงานค้างพิมพ์</h2>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>#</th><th>ชื่องาน</th><th>เครื่องพิมพ์</th><th>เวลานำเข้า</th><th>รอมาแล้ว</th><th></th></tr>
-          </thead>
-          <tbody id="pending-body"></tbody>
-        </table>
+      <!-- Orders marked green on the order page, ready to be added to the queue -->
+      <aside class="order-panel">
+        <h2>📝 จากคำสั่งงาน <span class="badge ready" data-count="ready">0</span></h2>
+        <p class="hint">คำสั่งงานสถานะ "ส่งเข้าคิวพิมพ์งาน" — เลือกเครื่องแล้วกดเพิ่มเข้าคิว</p>
+        <ul id="ready-orders" class="ready-list"></ul>
+      </aside>
+
+      <div class="pending-table">
+        <h2>รายการรวมงานค้างพิมพ์</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>#</th><th>ชื่องาน</th><th>เครื่องพิมพ์</th><th>เวลานำเข้า</th><th>รอมาแล้ว</th><th></th></tr>
+            </thead>
+            <tbody id="pending-body"></tbody>
+          </table>
+        </div>
+        <p id="pending-empty" class="empty" hidden>ไม่มีงานค้างพิมพ์</p>
       </div>
-      <p id="pending-empty" class="empty" hidden>ไม่มีงานค้างพิมพ์</p>
     </section>
 
     <!-- Printing -->
@@ -383,7 +444,7 @@
     var EMPTY_PICKER_VALUE = '#808081';
     var REFRESH_MS = 60000;
 
-    var state = { printers: [], pending: [], printing: [], done: [] };
+    var state = { printers: [], pending: [], printing: [], done: [], orders: [] };
     var busy = 0;
 
     // ---- Helpers ----
@@ -509,12 +570,29 @@
       return el('span', { className: 'printer-chip' }, [printer ? printer.name : fallbackName, dots]);
     }
 
+    /** Desired colors of the order a job came from (nothing for jobs typed in directly). */
+    function orderDots(orderId) {
+      if (!orderId) return null;
+      var order = state.orders.filter(function (o) { return o.id === orderId; })[0];
+      var colors = order ? order.colors.filter(Boolean) : [];
+      if (!colors.length) return null;
+      return el('span', { className: 'order-dots', title: 'สีที่ต้องการ (จากคำสั่งงาน)' }, colors.map(function (c) {
+        return el('span', { className: 'dot', style: 'background:' + c, title: c });
+      }));
+    }
+
+    function formatDate(isoDate) {
+      var p = (isoDate || '').split('-');
+      return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : isoDate;
+    }
+
     // ---- Rendering ----
 
     function render(data) {
       state = data;
       $('loading').hidden = true;
-      ['pending', 'printing', 'done'].forEach(function (key) {
+      data.ready = data.orders.filter(function (o) { return o.status === 'ready'; });
+      ['pending', 'printing', 'done', 'ready'].forEach(function (key) {
         document.querySelectorAll('[data-count="' + key + '"]').forEach(function (badge) {
           badge.textContent = data[key].length;
         });
@@ -522,6 +600,7 @@
       renderMonitor();
       renderPrinters();
       renderPrinterSelect();
+      renderReadyOrders();
       renderPending();
       renderPrinting();
       renderDone();
@@ -530,7 +609,7 @@
     function jobItem(job, metaText, buttons) {
       return el('li', {}, [
         el('span', { className: 'job-text' }, [
-          el('span', { className: 'job-title', text: job.title }),
+          el('span', { className: 'job-title' }, [job.title, orderDots(job.orderId)]),
           el('span', { className: 'job-meta' }, [printerChip(job.printerId, job.printerName), ' · ' + metaText])
         ]),
         el('span', { className: 'job-actions' }, buttons)
@@ -626,6 +705,34 @@
       });
     }
 
+    function renderReadyOrders() {
+      var list = $('ready-orders');
+      list.innerHTML = '';
+      state.ready.forEach(function (order) {
+        var select = el('select', { 'aria-label': 'เครื่องพิมพ์' }, [el('option', { value: '', text: '-- เลือกเครื่อง --' })]
+          .concat(state.printers.map(function (p) { return el('option', { value: p.id, text: p.name }); })));
+        var btn = el('button', {
+          type: 'button',
+          className: 'btn-start',
+          text: '+ เข้าคิว',
+          onclick: function () {
+            if (!select.value) { showMessage('กรุณาเลือกเครื่องพิมพ์ก่อนเพิ่มเข้าคิว', 'error'); select.focus(); return; }
+            btn.disabled = true;
+            call('queueOrder', [order.id, select.value], function (ok) {
+              if (ok) showMessage('เพิ่ม "' + order.type + ': ' + order.detail + '" เข้าคิวแล้ว', 'success');
+              else btn.disabled = false;
+            });
+          }
+        });
+        list.appendChild(el('li', {}, [
+          el('span', { className: 'order-title', text: order.type + ': ' + order.detail }),
+          el('span', { className: 'order-meta' }, [formatDate(order.date), orderDots(order.id)]),
+          el('span', { className: 'order-queue' }, [select, btn])
+        ]));
+      });
+      if (!state.ready.length) list.appendChild(el('li', { className: 'none', text: 'ไม่มีคำสั่งงานที่รอเข้าคิว' }));
+    }
+
     function renderPrinterSelect() {
       var select = $('job-printer');
       var current = select.value;
@@ -656,7 +763,7 @@
       renderTable('pending', function (job, i) {
         return [
           el('td', { text: String(i + 1) }),
-          el('td', { text: job.title }),
+          el('td', {}, [job.title, orderDots(job.orderId)]),
           el('td', {}, [printerChip(job.printerId, job.printerName)]),
           el('td', { className: 'nowrap', text: job.addedAt }),
           el('td', { className: 'nowrap', text: elapsed(job.addedAtMs) }),
@@ -668,7 +775,7 @@
     function renderPrinting() {
       renderTable('printing', function (job) {
         return [
-          el('td', { text: job.title }),
+          el('td', {}, [job.title, orderDots(job.orderId)]),
           el('td', {}, [printerChip(job.printerId, job.printerName)]),
           el('td', { className: 'nowrap', text: job.addedAt }),
           el('td', { className: 'nowrap', text: job.startedAt }),

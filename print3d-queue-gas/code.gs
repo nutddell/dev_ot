@@ -14,10 +14,19 @@ var PRINTER_HEADERS = ['Printer ID', 'Name', 'Color 1', 'Color 2', 'Color 3', 'C
 
 var QUEUE_SHEET = 'Queue';
 // A queued job is "pending" while Started At is empty and "printing" once it is set.
-var QUEUE_HEADERS = ['Job ID', 'Job', 'Printer ID', 'Printer Name', 'Added At', 'Started At'];
+var QUEUE_HEADERS = ['Job ID', 'Job', 'Printer ID', 'Printer Name', 'Added At', 'Started At', 'Order ID'];
 
 var DONE_SHEET = 'Done';
-var DONE_HEADERS = ['Job ID', 'Job', 'Printer Name', 'Added At', 'Done At', 'Started At'];
+var DONE_HEADERS = ['Job ID', 'Job', 'Printer Name', 'Added At', 'Done At', 'Started At', 'Order ID'];
+
+var ORDER_SHEET = 'Orders';
+var ORDER_HEADERS = ['Order ID', 'Date', 'Type', 'Detail', 'Color 1', 'Color 2', 'Color 3', 'Color 4',
+  'Status', 'Created At', 'Job ID', 'Printer Name'];
+
+var ORDER_TYPES = ['พวงกุญแจ', 'Key cap', 'อื่นๆ'];
+// design = รอการออกแบบ (yellow), ready = ส่งเข้าคิวพิมพ์งาน (green),
+// queued = already added to the print queue from the pending page.
+var ORDER_STATUSES = ['design', 'ready', 'queued'];
 
 var COLOR_SLOTS = 4;
 
@@ -29,9 +38,13 @@ var PRINTER_NAMES = [
   'X-ray', 'Yankee', 'Zulu'
 ];
 
+/** ?page=order opens the order page; anything else opens the print queue. */
 function doGet(e) {
-  return HtmlService.createHtmlOutputFromFile('index')
-    .setTitle('3D Print Queue')
+  var page = e && e.parameter && e.parameter.page === 'order' ? 'order' : 'index';
+  var template = HtmlService.createTemplateFromFile(page);
+  template.appUrl = ScriptApp.getService().getUrl();
+  return template.evaluate()
+    .setTitle(page === 'order' ? 'คำสั่งงาน - 3D Print Queue' : '3D Print Queue')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
@@ -87,6 +100,15 @@ function formatTime_(value) {
   return Utilities.formatDate(value, TIME_ZONE, 'dd/MM/yyyy HH:mm');
 }
 
+/**
+ * Order dates are typed as yyyy-MM-dd; Sheets turns them into a Date at midnight in the
+ * spreadsheet's own time zone, so read them back in that same zone to keep the day exact.
+ */
+function formatOrderDate_(value, ss) {
+  if (value instanceof Date) return Utilities.formatDate(value, ss.getSpreadsheetTimeZone(), 'yyyy-MM-dd');
+  return value ? value.toString() : '';
+}
+
 function toMillis_(value) {
   return value instanceof Date ? value.getTime() : 0;
 }
@@ -125,7 +147,7 @@ function printerNameOrder_(name) {
 
 /**
  * Everything the page needs in one call:
- * { printers: [...], pending: [...], printing: [...], done: [...] }
+ * { printers, pending, printing, done, orders }
  * Dates are pre-formatted because google.script.run cannot return Date objects.
  */
 function getData() {
@@ -149,7 +171,8 @@ function getData() {
         addedAt: formatTime_(row[4]),
         addedAtMs: toMillis_(row[4]),
         startedAt: formatTime_(row[5]),
-        startedAtMs: toMillis_(row[5])
+        startedAtMs: toMillis_(row[5]),
+        orderId: row[6]
       };
     });
   var pending = queue
@@ -168,12 +191,32 @@ function getData() {
         addedAt: formatTime_(row[3]),
         doneAt: formatTime_(row[4]),
         doneAtMs: toMillis_(row[4]),
-        startedAt: formatTime_(row[5])
+        startedAt: formatTime_(row[5]),
+        orderId: row[6]
       };
     })
     .sort(function (a, b) { return b.doneAtMs - a.doneAtMs; });
 
-  return { printers: printers, pending: pending, printing: printing, done: done };
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var orders = getRows_(getSheet_(ORDER_SHEET, ORDER_HEADERS), ORDER_HEADERS.length)
+    .map(function (row) {
+      return {
+        id: row[0],
+        date: formatOrderDate_(row[1], ss),
+        type: row[2],
+        detail: row[3],
+        colors: row.slice(4, 4 + COLOR_SLOTS).map(normalizeColor_),
+        status: row[8],
+        createdAtMs: toMillis_(row[9]),
+        jobId: row[10],
+        printerName: row[11]
+      };
+    })
+    .sort(function (a, b) {
+      return a.date === b.date ? b.createdAtMs - a.createdAtMs : (a.date < b.date ? 1 : -1);
+    });
+
+  return { printers: printers, pending: pending, printing: printing, done: done, orders: orders };
 }
 
 // ---- Printers ----
@@ -228,7 +271,7 @@ function addJob(title, printerId) {
     if (rowNum === -1) throw new Error('ไม่พบเครื่องพิมพ์ที่เลือก');
     var printerName = printerSheet.getRange(rowNum, 2).getValue();
     getSheet_(QUEUE_SHEET, QUEUE_HEADERS)
-      .appendRow([Utilities.getUuid(), title, printerId, printerName, new Date(), '']);
+      .appendRow([Utilities.getUuid(), title, printerId, printerName, new Date(), '', '']);
   });
   return getData();
 }
@@ -265,18 +308,115 @@ function completeJob(jobId) {
     if (rowNum === -1) throw new Error('ไม่พบงานนี้ในรายการกำลังพิมพ์ (อาจถูกกดเสร็จไปแล้ว)');
     var row = queueSheet.getRange(rowNum, 1, 1, QUEUE_HEADERS.length).getValues()[0];
     getSheet_(DONE_SHEET, DONE_HEADERS)
-      .appendRow([row[0], row[1], row[3], row[4], new Date(), row[5]]);
+      .appendRow([row[0], row[1], row[3], row[4], new Date(), row[5], row[6]]);
     queueSheet.deleteRow(rowNum);
   });
   return getData();
 }
 
 /** Removes a queued job without recording it as done (e.g. added by mistake). */
+/** Removes a queued job without recording it as done (e.g. added by mistake).
+ *  A job that came from an order puts that order back on the ready list. */
 function deleteJob(jobId) {
   withLock_(function () {
     var sheet = getSheet_(QUEUE_SHEET, QUEUE_HEADERS);
     var rowNum = findRow_(sheet, jobId);
-    if (rowNum !== -1) sheet.deleteRow(rowNum);
+    if (rowNum === -1) return;
+    var orderId = sheet.getRange(rowNum, 7).getValue();
+    sheet.deleteRow(rowNum);
+    if (orderId) {
+      var orderSheet = getSheet_(ORDER_SHEET, ORDER_HEADERS);
+      var orderRow = findRow_(orderSheet, orderId);
+      if (orderRow !== -1) {
+        orderSheet.getRange(orderRow, 9).setValue('ready');
+        orderSheet.getRange(orderRow, 11, 1, 2).setValues([['', '']]);
+      }
+    }
+  });
+  return getData();
+}
+
+// ---- Orders ----
+
+function readOrderColors_(colors) {
+  colors = colors || [];
+  var values = [];
+  for (var i = 0; i < COLOR_SLOTS; i++) values.push(normalizeColor_(colors[i]));
+  return values;
+}
+
+/** order: { date: 'yyyy-MM-dd', type, detail, colors: [4], status: 'design' | 'ready' } */
+function addOrder(order) {
+  order = order || {};
+  var date = (order.date || '').toString().trim();
+  var type = (order.type || '').toString().trim();
+  var detail = (order.detail || '').toString().trim();
+  var status = order.status;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('กรุณาเลือกวันที่');
+  if (ORDER_TYPES.indexOf(type) === -1) throw new Error('กรุณาเลือกชนิดของงาน');
+  if (!detail) throw new Error('กรุณากรอกรายละเอียดงาน');
+  if (status !== 'design' && status !== 'ready') throw new Error('กรุณาเลือกสถานะ');
+  withLock_(function () {
+    getSheet_(ORDER_SHEET, ORDER_HEADERS).appendRow(
+      [Utilities.getUuid(), date, type, detail].concat(readOrderColors_(order.colors), [status, new Date(), '', '']));
+  });
+  return getData();
+}
+
+function findOrder_(orderId) {
+  var sheet = getSheet_(ORDER_SHEET, ORDER_HEADERS);
+  var rowNum = findRow_(sheet, orderId);
+  if (rowNum === -1) throw new Error('ไม่พบคำสั่งงานนี้ (อาจถูกลบไปแล้ว)');
+  return { sheet: sheet, rowNum: rowNum, status: sheet.getRange(rowNum, 9).getValue() };
+}
+
+/** Switches an order between design (yellow) and ready (green). */
+function updateOrderStatus(orderId, status) {
+  if (status !== 'design' && status !== 'ready') throw new Error('สถานะไม่ถูกต้อง');
+  withLock_(function () {
+    var found = findOrder_(orderId);
+    if (found.status === 'queued') throw new Error('คำสั่งงานนี้ถูกเพิ่มเข้าคิวพิมพ์แล้ว เปลี่ยนสถานะไม่ได้');
+    found.sheet.getRange(found.rowNum, 9).setValue(status);
+  });
+  return getData();
+}
+
+function updateOrderColors(orderId, colors) {
+  var values = readOrderColors_(colors);
+  withLock_(function () {
+    var found = findOrder_(orderId);
+    found.sheet.getRange(found.rowNum, 5, 1, COLOR_SLOTS).setValues([values]);
+  });
+  return getData();
+}
+
+function deleteOrder(orderId) {
+  withLock_(function () {
+    var found = findOrder_(orderId);
+    if (found.status === 'queued') throw new Error('คำสั่งงานนี้ถูกเพิ่มเข้าคิวพิมพ์แล้ว ลบไม่ได้');
+    found.sheet.deleteRow(found.rowNum);
+  });
+  return getData();
+}
+
+/** Ready (green) order -> pending print job on the chosen printer. */
+function queueOrder(orderId, printerId) {
+  if (!printerId) throw new Error('กรุณาเลือกเครื่องพิมพ์');
+  withLock_(function () {
+    var found = findOrder_(orderId);
+    if (found.status !== 'ready') throw new Error('คำสั่งงานนี้ไม่ได้อยู่ในสถานะส่งเข้าคิวพิมพ์งาน (อาจถูกเพิ่มไปแล้ว)');
+    var order = found.sheet.getRange(found.rowNum, 1, 1, ORDER_HEADERS.length).getValues()[0];
+
+    var printerSheet = getSheet_(PRINTER_SHEET, PRINTER_HEADERS);
+    var printerRow = findRow_(printerSheet, printerId);
+    if (printerRow === -1) throw new Error('ไม่พบเครื่องพิมพ์ที่เลือก');
+    var printerName = printerSheet.getRange(printerRow, 2).getValue();
+
+    var jobId = Utilities.getUuid();
+    getSheet_(QUEUE_SHEET, QUEUE_HEADERS).appendRow(
+      [jobId, order[2] + ': ' + order[3], printerId, printerName, new Date(), '', orderId]);
+    found.sheet.getRange(found.rowNum, 9).setValue('queued');
+    found.sheet.getRange(found.rowNum, 11, 1, 2).setValues([[jobId, printerName]]);
   });
   return getData();
 }
