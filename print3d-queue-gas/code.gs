@@ -13,10 +13,11 @@ var PRINTER_SHEET = 'Printers';
 var PRINTER_HEADERS = ['Printer ID', 'Name', 'Color 1', 'Color 2', 'Color 3', 'Color 4', 'Created At'];
 
 var QUEUE_SHEET = 'Queue';
-var QUEUE_HEADERS = ['Job ID', 'Job', 'Printer ID', 'Printer Name', 'Added At'];
+// A queued job is "pending" while Started At is empty and "printing" once it is set.
+var QUEUE_HEADERS = ['Job ID', 'Job', 'Printer ID', 'Printer Name', 'Added At', 'Started At'];
 
 var DONE_SHEET = 'Done';
-var DONE_HEADERS = ['Job ID', 'Job', 'Printer Name', 'Added At', 'Done At'];
+var DONE_HEADERS = ['Job ID', 'Job', 'Printer Name', 'Added At', 'Done At', 'Started At'];
 
 var COLOR_SLOTS = 4;
 
@@ -124,7 +125,7 @@ function printerNameOrder_(name) {
 
 /**
  * Everything the page needs in one call:
- * { printers: [...], queue: [...], done: [...] }
+ * { printers: [...], pending: [...], printing: [...], done: [...] }
  * Dates are pre-formatted because google.script.run cannot return Date objects.
  */
 function getData() {
@@ -146,10 +147,17 @@ function getData() {
         printerId: row[2],
         printerName: row[3],
         addedAt: formatTime_(row[4]),
-        addedAtMs: toMillis_(row[4])
+        addedAtMs: toMillis_(row[4]),
+        startedAt: formatTime_(row[5]),
+        startedAtMs: toMillis_(row[5])
       };
-    })
+    });
+  var pending = queue
+    .filter(function (job) { return !job.startedAt; })
     .sort(function (a, b) { return a.addedAtMs - b.addedAtMs; });
+  var printing = queue
+    .filter(function (job) { return job.startedAt; })
+    .sort(function (a, b) { return a.startedAtMs - b.startedAtMs; });
 
   var done = getRows_(getSheet_(DONE_SHEET, DONE_HEADERS), DONE_HEADERS.length)
     .map(function (row) {
@@ -159,12 +167,13 @@ function getData() {
         printerName: row[2],
         addedAt: formatTime_(row[3]),
         doneAt: formatTime_(row[4]),
-        doneAtMs: toMillis_(row[4])
+        doneAtMs: toMillis_(row[4]),
+        startedAt: formatTime_(row[5])
       };
     })
     .sort(function (a, b) { return b.doneAtMs - a.doneAtMs; });
 
-  return { printers: printers, queue: queue, done: done };
+  return { printers: printers, pending: pending, printing: printing, done: done };
 }
 
 // ---- Printers ----
@@ -199,7 +208,7 @@ function deletePrinter(printerId) {
   withLock_(function () {
     var queueRows = getRows_(getSheet_(QUEUE_SHEET, QUEUE_HEADERS), QUEUE_HEADERS.length);
     var hasJobs = queueRows.some(function (row) { return row[2] === printerId; });
-    if (hasJobs) throw new Error('เครื่องนี้ยังมีงานค้างพิมพ์อยู่ กรุณาจัดการงานให้หมดก่อนลบ');
+    if (hasJobs) throw new Error('เครื่องนี้ยังมีงานค้างพิมพ์หรือกำลังพิมพ์อยู่ กรุณาจัดการงานให้หมดก่อนลบ');
     var sheet = getSheet_(PRINTER_SHEET, PRINTER_HEADERS);
     var rowNum = findRow_(sheet, printerId);
     if (rowNum !== -1) sheet.deleteRow(rowNum);
@@ -219,19 +228,44 @@ function addJob(title, printerId) {
     if (rowNum === -1) throw new Error('ไม่พบเครื่องพิมพ์ที่เลือก');
     var printerName = printerSheet.getRange(rowNum, 2).getValue();
     getSheet_(QUEUE_SHEET, QUEUE_HEADERS)
-      .appendRow([Utilities.getUuid(), title, printerId, printerName, new Date()]);
+      .appendRow([Utilities.getUuid(), title, printerId, printerName, new Date(), '']);
   });
   return getData();
 }
 
-/** Moves a job from Queue to Done, stamping the finish time. */
+/** Pending -> printing: stamps the start time. */
+function startJob(jobId) {
+  withLock_(function () {
+    var sheet = getSheet_(QUEUE_SHEET, QUEUE_HEADERS);
+    var rowNum = findRow_(sheet, jobId);
+    if (rowNum === -1) throw new Error('ไม่พบงานนี้ในรายการค้างพิมพ์ (อาจถูกลบไปแล้ว)');
+    var startedCell = sheet.getRange(rowNum, 6);
+    if (startedCell.getValue()) throw new Error('งานนี้เริ่มพิมพ์ไปแล้ว');
+    startedCell.setValue(new Date());
+  });
+  return getData();
+}
+
+/** Printing -> pending again (e.g. "พิมพ์งาน" pressed by mistake or the print failed). */
+function unstartJob(jobId) {
+  withLock_(function () {
+    var sheet = getSheet_(QUEUE_SHEET, QUEUE_HEADERS);
+    var rowNum = findRow_(sheet, jobId);
+    if (rowNum === -1) throw new Error('ไม่พบงานนี้ในรายการกำลังพิมพ์');
+    sheet.getRange(rowNum, 6).setValue('');
+  });
+  return getData();
+}
+
+/** Moves a printing job from Queue to Done, stamping the finish time. */
 function completeJob(jobId) {
   withLock_(function () {
     var queueSheet = getSheet_(QUEUE_SHEET, QUEUE_HEADERS);
     var rowNum = findRow_(queueSheet, jobId);
-    if (rowNum === -1) throw new Error('ไม่พบงานนี้ในรายการค้างพิมพ์ (อาจถูกกดเสร็จไปแล้ว)');
+    if (rowNum === -1) throw new Error('ไม่พบงานนี้ในรายการกำลังพิมพ์ (อาจถูกกดเสร็จไปแล้ว)');
     var row = queueSheet.getRange(rowNum, 1, 1, QUEUE_HEADERS.length).getValues()[0];
-    getSheet_(DONE_SHEET, DONE_HEADERS).appendRow([row[0], row[1], row[3], row[4], new Date()]);
+    getSheet_(DONE_SHEET, DONE_HEADERS)
+      .appendRow([row[0], row[1], row[3], row[4], new Date(), row[5]]);
     queueSheet.deleteRow(rowNum);
   });
   return getData();

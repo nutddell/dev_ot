@@ -15,6 +15,8 @@
     --muted: #776a60;
     --border: #e8ddd3;
     --success: #1f8a4c;
+    --printing: #2563eb;
+    --printing-50: #eef4ff;
     --danger: #c0392b;
     --white: #ffffff;
   }
@@ -90,10 +92,11 @@
     text-align: center;
   }
   .badge.muted { background: #b9aca1; }
+  .badge.printing { background: var(--printing); }
 
   /* ---- Buttons ---- */
   button { font: inherit; }
-  .btn-primary, .btn-done, .btn-ghost {
+  .btn-primary, .btn-done, .btn-start, .btn-ghost {
     border-radius: 8px;
     cursor: pointer;
     font-size: 14px;
@@ -103,6 +106,8 @@
   .btn-primary:hover { background: var(--brand-600); }
   .btn-done { background: var(--success); color: var(--white); border: none; white-space: nowrap; }
   .btn-done:hover { filter: brightness(0.92); }
+  .btn-start { background: var(--printing); color: var(--white); border: none; white-space: nowrap; }
+  .btn-start:hover { filter: brightness(0.92); }
   .btn-ghost { background: none; border: 1px solid var(--border); color: var(--muted); padding: 6px 10px; }
   .btn-ghost:hover { color: var(--danger); border-color: var(--danger); }
   button:disabled { opacity: 0.55; cursor: wait; }
@@ -187,21 +192,36 @@
   }
   .color-clear:hover { color: var(--danger); }
 
-  .printer-jobs { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); }
-  .printer-jobs li {
+  .printer-card.is-printing { border-color: var(--printing); box-shadow: 0 0 0 1px var(--printing); }
+  .status-pill { font-size: 12px; padding: 2px 10px; border-radius: 11px; white-space: nowrap; }
+  .status-pill.printing { background: var(--printing); color: var(--white); }
+  .status-pill.idle { background: #ece5df; color: var(--muted); }
+  .printer-status { font-size: 14px; display: flex; flex-direction: column; gap: 4px;
+                    border-top: 1px solid var(--border); padding-top: 10px; overflow-wrap: anywhere; }
+  .muted { color: var(--muted); font-size: 13px; }
+
+  /* ---- Dashboard monitor (printing / pending lists) ---- */
+  .monitor { display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 8px; }
+  @media (min-width: 900px) { .monitor { grid-template-columns: 1fr 1fr; align-items: start; } }
+  .monitor-col { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 4px 14px 8px; }
+  .monitor-col.printing { border-top: 4px solid var(--printing); background: var(--printing-50); }
+  .monitor-col.pending { border-top: 4px solid var(--brand-500); }
+  .monitor-col h2 { margin: 12px 0 6px; display: flex; align-items: center; gap: 8px; }
+  .job-list { list-style: none; margin: 0; padding: 0; }
+  .job-list li {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 0;
+    gap: 10px;
+    padding: 10px 0;
     border-bottom: 1px solid var(--border);
     font-size: 14px;
   }
-  .printer-jobs li:last-child { border-bottom: none; }
-  .printer-jobs .job-text { flex: 1; min-width: 0; }
-  .printer-jobs .job-title { display: block; overflow-wrap: anywhere; }
-  .printer-jobs .job-time { display: block; font-size: 12px; color: var(--muted); }
-  .printer-jobs .btn-done { padding: 5px 10px; font-size: 13px; }
-  .printer-jobs .none { color: var(--muted); font-size: 13px; justify-content: center; }
+  .job-list li:last-child { border-bottom: none; }
+  .job-list .job-text { flex: 1; min-width: 0; }
+  .job-list .job-title { display: block; font-weight: 600; overflow-wrap: anywhere; }
+  .job-list .job-meta { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .job-list .job-actions button { padding: 6px 10px; font-size: 13px; }
+  .job-list .none { color: var(--muted); font-size: 13px; justify-content: center; }
   .printer-foot { display: flex; justify-content: flex-end; }
 
   /* ---- Job form ---- */
@@ -237,6 +257,20 @@
 
   @media (max-width: 600px) {
     .job-form .field, .job-form select, .job-form button { width: 100%; }
+    .tabs { display: grid; grid-template-columns: 1fr 1fr; overflow: visible; }
+    .tab { padding: 10px 6px; font-size: 14px; }
+
+    /* Tables become one card per row so the action buttons stay on screen. */
+    .table-wrap { background: none; border: none; overflow: visible; }
+    table thead { display: none; }
+    table, tbody, tr, td { display: block; width: 100%; }
+    tbody tr { background: var(--white); border: 1px solid var(--border); border-radius: 12px;
+               padding: 6px 12px; margin-bottom: 10px; }
+    td { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0;
+         border-bottom: 1px dashed var(--border); text-align: right; }
+    td::before { content: attr(data-label); color: var(--muted); font-size: 13px; text-align: left; }
+    td.actions { justify-content: flex-end; border-bottom: none; padding-top: 10px; }
+    td.actions::before { content: none; }
   }
 </style>
 </head>
@@ -254,15 +288,27 @@
 
     <nav class="tabs" role="tablist">
       <button type="button" class="tab active" data-tab="dashboard">แดชบอร์ด</button>
-      <button type="button" class="tab" data-tab="queue">งานค้างพิมพ์ <span id="queue-count" class="badge">0</span></button>
-      <button type="button" class="tab" data-tab="done">พิมพ์เสร็จแล้ว <span id="done-count" class="badge muted">0</span></button>
+      <button type="button" class="tab" data-tab="pending">งานค้างพิมพ์ <span class="badge pending" data-count="pending">0</span></button>
+      <button type="button" class="tab" data-tab="printing">งานกำลังพิมพ์ <span class="badge printing" data-count="printing">0</span></button>
+      <button type="button" class="tab" data-tab="done">พิมพ์เสร็จแล้ว <span class="badge muted" data-count="done">0</span></button>
     </nav>
 
     <div id="message" class="message" hidden></div>
     <div id="loading" class="loading">กำลังโหลดข้อมูล...</div>
 
-    <!-- Dashboard: printers, their 4 colors and their pending jobs -->
+    <!-- Dashboard: what is printing, what is waiting, then the printers -->
     <section id="tab-dashboard" class="tab-panel">
+      <div class="monitor">
+        <div class="monitor-col printing">
+          <h2>🖨️ กำลังพิมพ์ <span class="badge printing" data-count="printing">0</span></h2>
+          <ul id="dash-printing" class="job-list"></ul>
+        </div>
+        <div class="monitor-col pending">
+          <h2>⏳ งานค้างพิมพ์ <span class="badge pending" data-count="pending">0</span></h2>
+          <ul id="dash-pending" class="job-list"></ul>
+        </div>
+      </div>
+
       <div class="section-head">
         <h2>เครื่องพิมพ์</h2>
         <button type="button" id="add-printer-btn" class="btn-primary">+ เพิ่มเครื่องพิมพ์</button>
@@ -272,8 +318,8 @@
       <p id="printer-empty" class="empty" hidden>ยังไม่มีเครื่องพิมพ์ กด "+ เพิ่มเครื่องพิมพ์" เพื่อเริ่มต้น</p>
     </section>
 
-    <!-- Queue: add a job + all pending jobs -->
-    <section id="tab-queue" class="tab-panel" hidden>
+    <!-- Pending: add a job + all jobs waiting to print -->
+    <section id="tab-pending" class="tab-panel" hidden>
       <form id="job-form" class="card job-form">
         <div class="field grow">
           <label for="job-title">ชื่องาน <span class="req">*</span></label>
@@ -292,12 +338,26 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>#</th><th>ชื่องาน</th><th>เครื่องพิมพ์</th><th>เวลานำเข้า</th><th></th></tr>
+            <tr><th>#</th><th>ชื่องาน</th><th>เครื่องพิมพ์</th><th>เวลานำเข้า</th><th>รอมาแล้ว</th><th></th></tr>
           </thead>
-          <tbody id="queue-body"></tbody>
+          <tbody id="pending-body"></tbody>
         </table>
       </div>
-      <p id="queue-empty" class="empty" hidden>ไม่มีงานค้างพิมพ์</p>
+      <p id="pending-empty" class="empty" hidden>ไม่มีงานค้างพิมพ์</p>
+    </section>
+
+    <!-- Printing -->
+    <section id="tab-printing" class="tab-panel" hidden>
+      <h2>รายการงานกำลังพิมพ์</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>ชื่องาน</th><th>เครื่องพิมพ์</th><th>เวลานำเข้า</th><th>เริ่มพิมพ์</th><th>พิมพ์มาแล้ว</th><th></th></tr>
+          </thead>
+          <tbody id="printing-body"></tbody>
+        </table>
+      </div>
+      <p id="printing-empty" class="empty" hidden>ไม่มีงานที่กำลังพิมพ์</p>
     </section>
 
     <!-- Done -->
@@ -306,7 +366,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>ชื่องาน</th><th>เครื่องพิมพ์</th><th>เวลานำเข้า</th><th>เวลาพิมพ์เสร็จ</th></tr>
+            <tr><th>ชื่องาน</th><th>เครื่องพิมพ์</th><th>เวลานำเข้า</th><th>เริ่มพิมพ์</th><th>เวลาพิมพ์เสร็จ</th></tr>
           </thead>
           <tbody id="done-body"></tbody>
         </table>
@@ -323,7 +383,7 @@
     var EMPTY_PICKER_VALUE = '#808081';
     var REFRESH_MS = 60000;
 
-    var state = { printers: [], queue: [], done: [] };
+    var state = { printers: [], pending: [], printing: [], done: [] };
     var busy = 0;
 
     // ---- Helpers ----
@@ -355,6 +415,18 @@
       messageTimer = setTimeout(function () { box.hidden = true; }, type === 'error' ? 8000 : 3000);
     }
 
+    /** "2 ชม. 15 นาที" since the given timestamp. */
+    function elapsed(sinceMs) {
+      if (!sinceMs) return '';
+      var minutes = Math.max(0, Math.floor((Date.now() - sinceMs) / 60000));
+      var days = Math.floor(minutes / 1440);
+      var hours = Math.floor((minutes % 1440) / 60);
+      var mins = minutes % 60;
+      if (days) return days + ' วัน ' + hours + ' ชม.';
+      if (hours) return hours + ' ชม. ' + mins + ' นาที';
+      return mins + ' นาที';
+    }
+
     /**
      * Calls a server function; every mutating server function returns the
      * fresh getData() payload, so the page simply re-renders from it.
@@ -373,6 +445,53 @@
           if (onDone) onDone(false);
         });
       runner[fnName].apply(runner, args || []);
+    }
+
+    /** A button that disables itself while its server call runs. */
+    function actionButton(className, text, fnName, args, successText, confirmText, title) {
+      return el('button', {
+        type: 'button',
+        className: className,
+        text: text,
+        title: title || '',
+        onclick: function (e) {
+          var btn = e.currentTarget;
+          var question = typeof confirmText === 'function' ? confirmText() : confirmText;
+          if (question && !confirm(question)) return;
+          btn.disabled = true;
+          call(fnName, args, function (ok) {
+            if (ok && successText) showMessage(successText, 'success');
+            else if (!ok) btn.disabled = false;
+          });
+        }
+      });
+    }
+
+    function startButton(job) {
+      return actionButton('btn-start', '▶ พิมพ์งาน', 'startJob', [job.id],
+        'เริ่มพิมพ์ "' + job.title + '" แล้ว', function () {
+          var busyJob = state.printing.filter(function (j) { return j.printerId === job.printerId; })[0];
+          return busyJob
+            ? 'เครื่อง ' + job.printerName + ' กำลังพิมพ์ "' + busyJob.title + '" อยู่\nต้องการเริ่มพิมพ์งานนี้ด้วยหรือไม่?'
+            : '';
+        });
+    }
+
+    function doneButton(job) {
+      return actionButton('btn-done', '✓ พิมพ์เสร็จแล้ว', 'completeJob', [job.id],
+        'ย้าย "' + job.title + '" ไปยังรายการพิมพ์เสร็จแล้ว');
+    }
+
+    function unstartButton(job) {
+      return actionButton('btn-ghost', '↩ กลับไปค้าง', 'unstartJob', [job.id],
+        'ย้าย "' + job.title + '" กลับไปงานค้างพิมพ์', 'ย้าย "' + job.title + '" กลับไปเป็นงานค้างพิมพ์?',
+        'กดพิมพ์งานผิด หรือพิมพ์ไม่สำเร็จต้องพิมพ์ใหม่');
+    }
+
+    function deleteButton(job) {
+      return actionButton('btn-ghost', 'ลบ', 'deleteJob', [job.id], 'ลบ "' + job.title + '" ออกจากคิวแล้ว',
+        'ลบงาน "' + job.title + '" ออกจากคิว?\n(งานจะไม่ถูกย้ายไปรายการพิมพ์เสร็จ)',
+        'ลบงานออกจากคิว (ไม่บันทึกว่าพิมพ์เสร็จ)');
     }
 
     function printerById(id) {
@@ -395,12 +514,45 @@
     function render(data) {
       state = data;
       $('loading').hidden = true;
-      $('queue-count').textContent = data.queue.length;
-      $('done-count').textContent = data.done.length;
+      ['pending', 'printing', 'done'].forEach(function (key) {
+        document.querySelectorAll('[data-count="' + key + '"]').forEach(function (badge) {
+          badge.textContent = data[key].length;
+        });
+      });
+      renderMonitor();
       renderPrinters();
       renderPrinterSelect();
-      renderQueue();
+      renderPending();
+      renderPrinting();
       renderDone();
+    }
+
+    function jobItem(job, metaText, buttons) {
+      return el('li', {}, [
+        el('span', { className: 'job-text' }, [
+          el('span', { className: 'job-title', text: job.title }),
+          el('span', { className: 'job-meta' }, [printerChip(job.printerId, job.printerName), ' · ' + metaText])
+        ]),
+        el('span', { className: 'job-actions' }, buttons)
+      ]);
+    }
+
+    function renderMonitor() {
+      var printing = $('dash-printing');
+      printing.innerHTML = '';
+      state.printing.forEach(function (job) {
+        printing.appendChild(jobItem(job, 'เริ่ม ' + job.startedAt + ' · พิมพ์มาแล้ว ' + elapsed(job.startedAtMs),
+          [doneButton(job)]));
+      });
+      if (!state.printing.length) printing.appendChild(el('li', { className: 'none', text: 'ไม่มีงานที่กำลังพิมพ์' }));
+
+      var pending = $('dash-pending');
+      pending.innerHTML = '';
+      state.pending.forEach(function (job) {
+        pending.appendChild(jobItem(job, 'นำเข้า ' + job.addedAt + ' · รอมาแล้ว ' + elapsed(job.addedAtMs),
+          [startButton(job)]));
+      });
+      if (!state.pending.length) pending.appendChild(el('li', { className: 'none', text: 'ไม่มีงานค้างพิมพ์' }));
     }
 
     function renderPrinters() {
@@ -409,44 +561,30 @@
       $('printer-empty').hidden = state.printers.length > 0;
 
       state.printers.forEach(function (printer) {
-        var jobs = state.queue.filter(function (j) { return j.printerId === printer.id; });
+        var printing = state.printing.filter(function (j) { return j.printerId === printer.id; });
+        var pendingCount = state.pending.filter(function (j) { return j.printerId === printer.id; }).length;
 
         var slots = [];
         for (var i = 0; i < COLOR_SLOTS; i++) slots.push(colorSlot(printer, i));
 
-        var jobItems = jobs.length
-          ? jobs.map(function (job) {
-              return el('li', {}, [
-                el('span', { className: 'job-text' }, [
-                  el('span', { className: 'job-title', text: job.title }),
-                  el('span', { className: 'job-time', text: 'นำเข้า ' + job.addedAt })
-                ]),
-                doneButton(job)
-              ]);
-            })
-          : [el('li', { className: 'none', text: 'ไม่มีงานค้าง' })];
-
-        grid.appendChild(el('div', { className: 'printer-card' }, [
+        grid.appendChild(el('div', { className: 'printer-card' + (printing.length ? ' is-printing' : '') }, [
           el('div', { className: 'printer-head' }, [
             el('span', { className: 'printer-name', text: printer.name }),
-            el('span', { className: 'printer-count', text: 'ค้างพิมพ์ ' + jobs.length + ' งาน' })
+            el('span', {
+              className: 'status-pill ' + (printing.length ? 'printing' : 'idle'),
+              text: printing.length ? 'กำลังพิมพ์' : 'ว่าง'
+            })
           ]),
           el('div', { className: 'colors' }, slots),
-          el('ul', { className: 'printer-jobs' }, jobItems),
+          el('div', { className: 'printer-status' }, [
+            el('div', {}, printing.length
+              ? [el('strong', { text: 'กำลังพิมพ์: ' }), printing.map(function (j) { return j.title; }).join(', ')]
+              : [el('span', { className: 'muted', text: 'ไม่มีงานที่กำลังพิมพ์' })]),
+            el('div', { className: 'muted', text: 'ค้างพิมพ์ ' + pendingCount + ' งาน' })
+          ]),
           el('div', { className: 'printer-foot' }, [
-            el('button', {
-              type: 'button',
-              className: 'btn-ghost',
-              text: 'ลบเครื่อง',
-              onclick: function (e) {
-                if (!confirm('ลบเครื่องพิมพ์ ' + printer.name + ' ?')) return;
-                e.target.disabled = true;
-                call('deletePrinter', [printer.id], function (ok) {
-                  if (ok) showMessage('ลบเครื่อง ' + printer.name + ' แล้ว', 'success');
-                  else e.target.disabled = false;
-                });
-              }
-            })
+            actionButton('btn-ghost', 'ลบเครื่อง', 'deletePrinter', [printer.id],
+              'ลบเครื่อง ' + printer.name + ' แล้ว', 'ลบเครื่องพิมพ์ ' + printer.name + ' ?')
           ])
         ]));
       });
@@ -488,21 +626,6 @@
       });
     }
 
-    function doneButton(job) {
-      return el('button', {
-        type: 'button',
-        className: 'btn-done',
-        text: '✓ พิมพ์เสร็จ',
-        onclick: function (e) {
-          e.target.disabled = true;
-          call('completeJob', [job.id], function (ok) {
-            if (ok) showMessage('ย้าย "' + job.title + '" ไปยังรายการพิมพ์เสร็จแล้ว', 'success');
-            else e.target.disabled = false;
-          });
-        }
-      });
-    }
-
     function renderPrinterSelect() {
       var select = $('job-printer');
       var current = select.value;
@@ -514,45 +637,56 @@
       if (printerById(current)) select.value = current;
     }
 
-    function renderQueue() {
-      var body = $('queue-body');
+    function renderTable(key, rowCells) {
+      var body = $(key + '-body');
       body.innerHTML = '';
-      $('queue-empty').hidden = state.queue.length > 0;
-      state.queue.forEach(function (job, i) {
-        body.appendChild(el('tr', {}, [
+      $(key + '-empty').hidden = state[key].length > 0;
+      // Column names are repeated on each cell for the mobile card layout.
+      var labels = Array.prototype.map.call(body.parentNode.querySelectorAll('thead th'), function (th) {
+        return th.textContent;
+      });
+      state[key].forEach(function (job, i) {
+        var cells = rowCells(job, i);
+        cells.forEach(function (td, c) { if (labels[c]) td.setAttribute('data-label', labels[c]); });
+        body.appendChild(el('tr', {}, cells));
+      });
+    }
+
+    function renderPending() {
+      renderTable('pending', function (job, i) {
+        return [
           el('td', { text: String(i + 1) }),
           el('td', { text: job.title }),
           el('td', {}, [printerChip(job.printerId, job.printerName)]),
           el('td', { className: 'nowrap', text: job.addedAt }),
-          el('td', { className: 'actions' }, [
-            doneButton(job),
-            el('button', {
-              type: 'button',
-              className: 'btn-ghost',
-              text: 'ลบ',
-              title: 'ลบงานออกจากคิว (ไม่บันทึกว่าพิมพ์เสร็จ)',
-              onclick: function (e) {
-                if (!confirm('ลบงาน "' + job.title + '" ออกจากคิว?\n(งานจะไม่ถูกย้ายไปรายการพิมพ์เสร็จ)')) return;
-                e.target.disabled = true;
-                call('deleteJob', [job.id], function (ok) { if (!ok) e.target.disabled = false; });
-              }
-            })
-          ])
-        ]));
+          el('td', { className: 'nowrap', text: elapsed(job.addedAtMs) }),
+          el('td', { className: 'actions' }, [startButton(job), deleteButton(job)])
+        ];
+      });
+    }
+
+    function renderPrinting() {
+      renderTable('printing', function (job) {
+        return [
+          el('td', { text: job.title }),
+          el('td', {}, [printerChip(job.printerId, job.printerName)]),
+          el('td', { className: 'nowrap', text: job.addedAt }),
+          el('td', { className: 'nowrap', text: job.startedAt }),
+          el('td', { className: 'nowrap', text: elapsed(job.startedAtMs) }),
+          el('td', { className: 'actions' }, [doneButton(job), unstartButton(job)])
+        ];
       });
     }
 
     function renderDone() {
-      var body = $('done-body');
-      body.innerHTML = '';
-      $('done-empty').hidden = state.done.length > 0;
-      state.done.forEach(function (job) {
-        body.appendChild(el('tr', {}, [
+      renderTable('done', function (job) {
+        return [
           el('td', { text: job.title }),
           el('td', { className: 'nowrap', text: job.printerName }),
           el('td', { className: 'nowrap', text: job.addedAt }),
+          el('td', { className: 'nowrap', text: job.startedAt || '-' }),
           el('td', { className: 'nowrap', text: job.doneAt })
-        ]));
+        ];
       });
     }
 
@@ -598,7 +732,8 @@
       });
     });
 
-    // Keep the page in sync when several people use it at the same time.
+    // Keep the page in sync when several people use it at the same time
+    // (also refreshes the "พิมพ์มาแล้ว / รอมาแล้ว" durations).
     setInterval(function () {
       if (busy === 0 && !document.hidden) call('getData');
     }, REFRESH_MS);
