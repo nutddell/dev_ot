@@ -11,9 +11,7 @@ Web app สำหรับจัดการคิวงานพิมพ์ 3D
 
 - `appsscript.json` — manifest ของโปรเจกต์
 - `code.gs` — server-side logic (เพิ่ม/ลบเครื่อง, บันทึกสี, เพิ่มงาน, ย้ายงานไปพิมพ์เสร็จ)
-- `index.html` — หน้าเว็บหลัก (แท็บ แดชบอร์ด / งานค้างพิมพ์ / พิมพ์เสร็จแล้ว)
-- `stylesheet.html` — CSS โทนสีส้ม
-- `javascript.html` — client-side script
+- `index.html` — หน้าเว็บทั้งหมดในไฟล์เดียว (HTML + CSS + JavaScript)
 
 ## ฟีเจอร์
 
@@ -59,10 +57,9 @@ Web app สำหรับจัดการคิวงานพิมพ์ 3D
    (https://docs.google.com/spreadsheets/d/13fuUSHjSdJ7jBUp0AjRi3HIU7Ze7ZNkMsA5sGZir1dg/edit)
 2. เปิด **Extensions > Apps Script** (หรือสร้างโปรเจกต์แยกที่ script.google.com ก็ได้
    เพราะโค้ดเปิด sheet ด้วย ID อยู่แล้ว)
-3. เปลี่ยนชื่อไฟล์ `Code.gs` เริ่มต้นเป็น `code.gs` แล้วสร้างไฟล์ต่อไปนี้
-   (ชื่อไฟล์เป็นตัวพิมพ์เล็กทั้งหมด ต้องตรงกันเป๊ะ เพราะโค้ดเรียกไฟล์ตามชื่อนี้):
-   `code.gs`, `index.html`, `stylesheet.html`, `javascript.html`
-4. คัดลอกเนื้อหาจากไฟล์ในโฟลเดอร์นี้ไปวางในแต่ละไฟล์ (ไฟล์ `.html` ให้สร้างเป็น HTML file)
+3. มีแค่ 2 ไฟล์: เปลี่ยนชื่อไฟล์ `Code.gs` เริ่มต้นเป็น `code.gs` และกด **+ > HTML**
+   สร้างไฟล์ชื่อ `index` (editor จะแสดงเป็น `index.html`)
+4. คัดลอกเนื้อหาจาก `code.gs` และ `index.html` ในโฟลเดอร์นี้ไปวางแทนของเดิมทั้งหมด
 5. เปิด **Project Settings** > ติ๊ก "Show appsscript.json manifest file" แล้วแก้ให้ตรงกับ
    `appsscript.json` ในโฟลเดอร์นี้ (timezone `Asia/Bangkok` ใช้สำหรับแสดงเวลา)
 6. กด **Deploy > New deployment**
@@ -90,7 +87,7 @@ clasp deploy
 
 ## การปรับแต่งที่อาจต้องทำเพิ่ม
 
-- **เปลี่ยนจำนวนช่องสีต่อเครื่อง**: แก้ `COLOR_SLOTS` ทั้งใน `code.gs` และ `javascript.html`
+- **เปลี่ยนจำนวนช่องสีต่อเครื่อง**: แก้ `COLOR_SLOTS` ทั้งใน `code.gs` และ `index.html`
   และเพิ่มคอลัมน์ `Color N` ใน `PRINTER_HEADERS`
 - **เปลี่ยนรูปแบบเวลา**: แก้ `formatTime_` ใน `code.gs`
-- **ความถี่ในการ refresh อัตโนมัติ**: แก้ `REFRESH_MS` ใน `javascript.html`
+- **ความถี่ในการ refresh อัตโนมัติ**: แก้ `REFRESH_MS` ใน `index.html`

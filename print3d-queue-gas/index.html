@@ -3,7 +3,230 @@
 <head>
   <base target="_top">
   <meta charset="UTF-8">
-  <?!= include('stylesheet'); ?>
+<style>
+  :root {
+    --brand-900: #3a1d06;
+    --brand-700: #9a4a0b;
+    --brand-600: #c75f0e;
+    --brand-500: #e8731a;
+    --brand-100: #fdebdc;
+    --bg: #faf7f4;
+    --text: #2a2420;
+    --muted: #776a60;
+    --border: #e8ddd3;
+    --success: #1f8a4c;
+    --danger: #c0392b;
+    --white: #ffffff;
+  }
+
+  * { box-sizing: border-box; }
+
+  /* Elements with `display` set in this stylesheet would otherwise override
+     the native [hidden] attribute. */
+  [hidden] { display: none !important; }
+
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', Sarabun, Tahoma, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  .app {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 24px 16px 48px;
+  }
+
+  .app-header { text-align: center; margin-bottom: 16px; }
+  .app-header h1 { color: var(--brand-900); font-size: 24px; margin: 8px 0 4px; }
+  .subtitle { color: var(--muted); font-size: 14px; margin: 0; }
+
+  h2 { font-size: 17px; color: var(--brand-900); margin: 20px 0 10px; }
+
+  /* ---- Tabs ---- */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 16px;
+    overflow-x: auto;
+  }
+  .tab {
+    border: none;
+    background: none;
+    padding: 10px 16px;
+    font: inherit;
+    font-size: 15px;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    white-space: nowrap;
+  }
+  .tab:hover { color: var(--brand-700); }
+  .tab.active { color: var(--brand-700); border-bottom-color: var(--brand-500); font-weight: 600; }
+
+  .badge {
+    display: inline-block;
+    min-width: 22px;
+    padding: 1px 7px;
+    border-radius: 11px;
+    background: var(--brand-500);
+    color: var(--white);
+    font-size: 12px;
+    text-align: center;
+  }
+  .badge.muted { background: #b9aca1; }
+
+  /* ---- Buttons ---- */
+  button { font: inherit; }
+  .btn-primary, .btn-done, .btn-ghost {
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 8px 14px;
+  }
+  .btn-primary { background: var(--brand-500); color: var(--white); border: 1px solid var(--brand-600); }
+  .btn-primary:hover { background: var(--brand-600); }
+  .btn-done { background: var(--success); color: var(--white); border: none; white-space: nowrap; }
+  .btn-done:hover { filter: brightness(0.92); }
+  .btn-ghost { background: none; border: 1px solid var(--border); color: var(--muted); padding: 6px 10px; }
+  .btn-ghost:hover { color: var(--danger); border-color: var(--danger); }
+  button:disabled { opacity: 0.55; cursor: wait; }
+
+  /* ---- Messages ---- */
+  .message { padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; font-size: 14px; }
+  .message.error { background: #fdecea; color: var(--danger); border: 1px solid #f5c6c0; }
+  .message.success { background: #e7f6ed; color: var(--success); border: 1px solid #bfe5cd; }
+  .loading { text-align: center; color: var(--muted); padding: 24px; }
+  .hint { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+  .empty { color: var(--muted); text-align: center; padding: 24px; background: var(--white);
+           border: 1px dashed var(--border); border-radius: 10px; }
+
+  .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .section-head h2 { margin: 8px 0; }
+
+  /* ---- Printer cards ---- */
+  .printer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+  }
+  .printer-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .printer-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .printer-name { font-size: 18px; font-weight: 700; color: var(--brand-900); }
+  .printer-count { font-size: 13px; color: var(--muted); }
+
+  .colors { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .color-slot { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .swatch {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    max-width: 56px;
+    border-radius: 10px;
+    border: 2px solid rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+  }
+  .swatch.empty {
+    border: 2px dashed #cbbcae;
+    background: repeating-linear-gradient(45deg, #fff, #fff 5px, #f3ece6 5px, #f3ece6 10px);
+  }
+  .swatch.empty::after {
+    content: '+';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #b9aca1;
+    font-size: 22px;
+  }
+  /* The native picker sits invisibly on top of the swatch so a click opens it. */
+  .swatch input[type="color"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    border: none;
+    padding: 0;
+  }
+  .swatch.saving { opacity: 0.5; }
+  .color-label { font-size: 11px; color: var(--muted); font-family: Consolas, monospace; }
+  .color-clear {
+    border: none;
+    background: none;
+    color: var(--muted);
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+  }
+  .color-clear:hover { color: var(--danger); }
+
+  .printer-jobs { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); }
+  .printer-jobs li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .printer-jobs li:last-child { border-bottom: none; }
+  .printer-jobs .job-text { flex: 1; min-width: 0; }
+  .printer-jobs .job-title { display: block; overflow-wrap: anywhere; }
+  .printer-jobs .job-time { display: block; font-size: 12px; color: var(--muted); }
+  .printer-jobs .btn-done { padding: 5px 10px; font-size: 13px; }
+  .printer-jobs .none { color: var(--muted); font-size: 13px; justify-content: center; }
+  .printer-foot { display: flex; justify-content: flex-end; }
+
+  /* ---- Job form ---- */
+  .card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .job-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field.grow { flex: 1 1 260px; }
+  .field label { font-size: 13px; color: var(--muted); }
+  .req { color: var(--danger); }
+  input[type="text"], select {
+    font: inherit;
+    font-size: 15px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--white);
+    min-width: 160px;
+  }
+  input[type="text"]:focus, select:focus { outline: 2px solid var(--brand-100); border-color: var(--brand-500); }
+
+  /* ---- Tables ---- */
+  .table-wrap { overflow-x: auto; background: var(--white); border: 1px solid var(--border); border-radius: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  th { background: var(--brand-100); color: var(--brand-900); font-weight: 600; white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: none; }
+  td.nowrap { white-space: nowrap; }
+  td.actions { white-space: nowrap; text-align: right; }
+  td.actions button + button { margin-left: 6px; }
+  .printer-chip { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .dots { display: inline-flex; gap: 2px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.2); }
+
+  @media (max-width: 600px) {
+    .job-form .field, .job-form select, .job-form button { width: 100%; }
+  }
+</style>
 </head>
 <body>
   <div class="app">
@@ -75,6 +298,296 @@
     </section>
   </div>
 
-  <?!= include('javascript'); ?>
+<script>
+  (function () {
+    var COLOR_SLOTS = 4;
+    // Initial value of an unused slot's picker. Deliberately an odd shade so
+    // picking plain black/white still fires a `change` event.
+    var EMPTY_PICKER_VALUE = '#808081';
+    var REFRESH_MS = 60000;
+
+    var state = { printers: [], queue: [], done: [] };
+    var busy = 0;
+
+    // ---- Helpers ----
+
+    function $(id) { return document.getElementById(id); }
+
+    function el(tag, props, children) {
+      var node = document.createElement(tag);
+      Object.keys(props || {}).forEach(function (key) {
+        if (key === 'className') node.className = props[key];
+        else if (key === 'text') node.textContent = props[key];
+        else if (key === 'style') node.setAttribute('style', props[key]);
+        else if (key.indexOf('on') === 0) node.addEventListener(key.slice(2), props[key]);
+        else node.setAttribute(key, props[key]);
+      });
+      (children || []).forEach(function (child) {
+        if (child) node.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
+      });
+      return node;
+    }
+
+    var messageTimer = null;
+    function showMessage(text, type) {
+      var box = $('message');
+      box.textContent = text;
+      box.className = 'message ' + type;
+      box.hidden = false;
+      clearTimeout(messageTimer);
+      messageTimer = setTimeout(function () { box.hidden = true; }, type === 'error' ? 8000 : 3000);
+    }
+
+    /**
+     * Calls a server function; every mutating server function returns the
+     * fresh getData() payload, so the page simply re-renders from it.
+     */
+    function call(fnName, args, onDone) {
+      busy++;
+      var runner = google.script.run
+        .withSuccessHandler(function (data) {
+          busy--;
+          render(data);
+          if (onDone) onDone(true);
+        })
+        .withFailureHandler(function (err) {
+          busy--;
+          showMessage(err.message || String(err), 'error');
+          if (onDone) onDone(false);
+        });
+      runner[fnName].apply(runner, args || []);
+    }
+
+    function printerById(id) {
+      for (var i = 0; i < state.printers.length; i++) {
+        if (state.printers[i].id === id) return state.printers[i];
+      }
+      return null;
+    }
+
+    function printerChip(printerId, fallbackName) {
+      var printer = printerById(printerId);
+      var dots = el('span', { className: 'dots' }, (printer ? printer.colors : [])
+        .filter(Boolean)
+        .map(function (c) { return el('span', { className: 'dot', style: 'background:' + c, title: c }); }));
+      return el('span', { className: 'printer-chip' }, [printer ? printer.name : fallbackName, dots]);
+    }
+
+    // ---- Rendering ----
+
+    function render(data) {
+      state = data;
+      $('loading').hidden = true;
+      $('queue-count').textContent = data.queue.length;
+      $('done-count').textContent = data.done.length;
+      renderPrinters();
+      renderPrinterSelect();
+      renderQueue();
+      renderDone();
+    }
+
+    function renderPrinters() {
+      var grid = $('printer-grid');
+      grid.innerHTML = '';
+      $('printer-empty').hidden = state.printers.length > 0;
+
+      state.printers.forEach(function (printer) {
+        var jobs = state.queue.filter(function (j) { return j.printerId === printer.id; });
+
+        var slots = [];
+        for (var i = 0; i < COLOR_SLOTS; i++) slots.push(colorSlot(printer, i));
+
+        var jobItems = jobs.length
+          ? jobs.map(function (job) {
+              return el('li', {}, [
+                el('span', { className: 'job-text' }, [
+                  el('span', { className: 'job-title', text: job.title }),
+                  el('span', { className: 'job-time', text: 'นำเข้า ' + job.addedAt })
+                ]),
+                doneButton(job)
+              ]);
+            })
+          : [el('li', { className: 'none', text: 'ไม่มีงานค้าง' })];
+
+        grid.appendChild(el('div', { className: 'printer-card' }, [
+          el('div', { className: 'printer-head' }, [
+            el('span', { className: 'printer-name', text: printer.name }),
+            el('span', { className: 'printer-count', text: 'ค้างพิมพ์ ' + jobs.length + ' งาน' })
+          ]),
+          el('div', { className: 'colors' }, slots),
+          el('ul', { className: 'printer-jobs' }, jobItems),
+          el('div', { className: 'printer-foot' }, [
+            el('button', {
+              type: 'button',
+              className: 'btn-ghost',
+              text: 'ลบเครื่อง',
+              onclick: function (e) {
+                if (!confirm('ลบเครื่องพิมพ์ ' + printer.name + ' ?')) return;
+                e.target.disabled = true;
+                call('deletePrinter', [printer.id], function (ok) {
+                  if (ok) showMessage('ลบเครื่อง ' + printer.name + ' แล้ว', 'success');
+                  else e.target.disabled = false;
+                });
+              }
+            })
+          ])
+        ]));
+      });
+    }
+
+    function colorSlot(printer, index) {
+      var color = printer.colors[index];
+      var swatch = el('label', {
+        className: 'swatch' + (color ? '' : ' empty'),
+        style: color ? 'background:' + color : '',
+        title: color ? 'สี ' + (index + 1) + ': ' + color + ' (คลิกเพื่อเปลี่ยน)' : 'สี ' + (index + 1) + ': คลิกเพื่อเลือกสี'
+      });
+      var input = el('input', { type: 'color' });
+      input.value = color || EMPTY_PICKER_VALUE;
+      input.addEventListener('change', function () {
+        saveColor(printer, index, input.value, swatch);
+      });
+      swatch.appendChild(input);
+
+      var children = [swatch, el('span', { className: 'color-label', text: color ? color.toUpperCase() : 'ว่าง' })];
+      if (color) {
+        children.push(el('button', {
+          type: 'button',
+          className: 'color-clear',
+          text: 'ล้าง',
+          onclick: function () { saveColor(printer, index, '', swatch); }
+        }));
+      }
+      return el('div', { className: 'color-slot' }, children);
+    }
+
+    function saveColor(printer, index, value, swatch) {
+      var colors = printer.colors.slice();
+      colors[index] = value;
+      swatch.classList.add('saving');
+      call('updatePrinterColors', [printer.id, colors], function (ok) {
+        if (ok) showMessage('บันทึกสีของ ' + printer.name + ' แล้ว', 'success');
+        else swatch.classList.remove('saving');
+      });
+    }
+
+    function doneButton(job) {
+      return el('button', {
+        type: 'button',
+        className: 'btn-done',
+        text: '✓ พิมพ์เสร็จ',
+        onclick: function (e) {
+          e.target.disabled = true;
+          call('completeJob', [job.id], function (ok) {
+            if (ok) showMessage('ย้าย "' + job.title + '" ไปยังรายการพิมพ์เสร็จแล้ว', 'success');
+            else e.target.disabled = false;
+          });
+        }
+      });
+    }
+
+    function renderPrinterSelect() {
+      var select = $('job-printer');
+      var current = select.value;
+      select.innerHTML = '';
+      select.appendChild(el('option', { value: '', text: state.printers.length ? '-- เลือกเครื่อง --' : '-- ยังไม่มีเครื่องพิมพ์ --' }));
+      state.printers.forEach(function (p) {
+        select.appendChild(el('option', { value: p.id, text: p.name }));
+      });
+      if (printerById(current)) select.value = current;
+    }
+
+    function renderQueue() {
+      var body = $('queue-body');
+      body.innerHTML = '';
+      $('queue-empty').hidden = state.queue.length > 0;
+      state.queue.forEach(function (job, i) {
+        body.appendChild(el('tr', {}, [
+          el('td', { text: String(i + 1) }),
+          el('td', { text: job.title }),
+          el('td', {}, [printerChip(job.printerId, job.printerName)]),
+          el('td', { className: 'nowrap', text: job.addedAt }),
+          el('td', { className: 'actions' }, [
+            doneButton(job),
+            el('button', {
+              type: 'button',
+              className: 'btn-ghost',
+              text: 'ลบ',
+              title: 'ลบงานออกจากคิว (ไม่บันทึกว่าพิมพ์เสร็จ)',
+              onclick: function (e) {
+                if (!confirm('ลบงาน "' + job.title + '" ออกจากคิว?\n(งานจะไม่ถูกย้ายไปรายการพิมพ์เสร็จ)')) return;
+                e.target.disabled = true;
+                call('deleteJob', [job.id], function (ok) { if (!ok) e.target.disabled = false; });
+              }
+            })
+          ])
+        ]));
+      });
+    }
+
+    function renderDone() {
+      var body = $('done-body');
+      body.innerHTML = '';
+      $('done-empty').hidden = state.done.length > 0;
+      state.done.forEach(function (job) {
+        body.appendChild(el('tr', {}, [
+          el('td', { text: job.title }),
+          el('td', { className: 'nowrap', text: job.printerName }),
+          el('td', { className: 'nowrap', text: job.addedAt }),
+          el('td', { className: 'nowrap', text: job.doneAt })
+        ]));
+      });
+    }
+
+    // ---- Events ----
+
+    document.querySelectorAll('.tab').forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        document.querySelectorAll('.tab').forEach(function (t) {
+          t.classList.toggle('active', t === tab);
+        });
+        document.querySelectorAll('.tab-panel').forEach(function (panel) {
+          panel.hidden = panel.id !== 'tab-' + tab.dataset.tab;
+        });
+      });
+    });
+
+    $('add-printer-btn').addEventListener('click', function () {
+      var btn = this;
+      btn.disabled = true;
+      call('addPrinter', [], function (ok) {
+        btn.disabled = false;
+        if (ok) {
+          var added = state.printers[state.printers.length - 1];
+          showMessage('เพิ่มเครื่อง ' + added.name + ' แล้ว — เลือกสีประจำเครื่องได้เลย', 'success');
+        }
+      });
+    });
+
+    $('job-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var title = $('job-title').value.trim();
+      var printerId = $('job-printer').value;
+      if (!title || !printerId) return;
+      var btn = $('job-submit');
+      btn.disabled = true;
+      call('addJob', [title, printerId], function (ok) {
+        btn.disabled = false;
+        if (ok) {
+          $('job-title').value = '';
+          $('job-title').focus();
+          showMessage('เพิ่ม "' + title + '" เข้าคิวแล้ว', 'success');
+        }
+      });
+    });
+
+    // Keep the page in sync when several people use it at the same time.
+    setInterval(function () {
+      if (busy === 0 && !document.hidden) call('getData');
+    }, REFRESH_MS);
+
+    call('getData');
+  })();
+</script>
 </body>
 </html>
