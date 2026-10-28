@@ -1,7 +1,10 @@
 /**
  * 3D Print Queue - Google Apps Script backend
- * Data store: the bound Google Sheet (sheets are created automatically).
+ * Data store: the Google Sheet SPREADSHEET_ID (sheets are created automatically).
  */
+
+// "3DPrint JOB" spreadsheet
+var SPREADSHEET_ID = '13fuUSHjSdJ7jBUp0AjRi3HIU7Ze7ZNkMsA5sGZir1dg';
 
 var PRINTER_SHEET = 'Printers';
 var PRINTER_HEADERS = ['Printer ID', 'Name', 'Color 1', 'Color 2', 'Color 3', 'Color 4', 'Created At'];
@@ -37,7 +40,7 @@ function include(filename) {
 // ---- Sheet helpers ----
 
 function getSheet_(name, headers) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   var sheet = ss.getSheetByName(name);
   if (!sheet) {
     sheet = ss.insertSheet(name);

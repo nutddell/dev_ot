@@ -3,6 +3,10 @@
 Web app สำหรับจัดการคิวงานพิมพ์ 3D: ดูงานที่รอพิมพ์ สีที่ใส่ประจำแต่ละเครื่อง (เครื่องละ 4 สี)
 และประวัติงานที่พิมพ์เสร็จ ใช้ Google Apps Script (GAS) เป็น backend และ Google Sheets เป็นฐานข้อมูล
 
+ฐานข้อมูล: Google Sheet **"3DPrint JOB"**
+(`13fuUSHjSdJ7jBUp0AjRi3HIU7Ze7ZNkMsA5sGZir1dg`) กำหนดไว้ที่ `SPREADSHEET_ID` ใน `code.gs`
+— ถ้าจะเปลี่ยนไปใช้ sheet อื่น แก้ค่านี้ค่าเดียว
+
 ## โครงสร้างไฟล์
 
 - `appsscript.json` — manifest ของโปรเจกต์
@@ -51,8 +55,10 @@ Web app สำหรับจัดการคิวงานพิมพ์ 3D
 
 ## วิธี Deploy
 
-1. สร้าง Google Sheet ใหม่ — นี่จะเป็นฐานข้อมูล
-2. เปิด **Extensions > Apps Script**
+1. เปิด Google Sheet "3DPrint JOB"
+   (https://docs.google.com/spreadsheets/d/13fuUSHjSdJ7jBUp0AjRi3HIU7Ze7ZNkMsA5sGZir1dg/edit)
+2. เปิด **Extensions > Apps Script** (หรือสร้างโปรเจกต์แยกที่ script.google.com ก็ได้
+   เพราะโค้ดเปิด sheet ด้วย ID อยู่แล้ว)
 3. เปลี่ยนชื่อไฟล์ `Code.gs` เริ่มต้นเป็น `code.gs` แล้วสร้างไฟล์ต่อไปนี้
    (ชื่อไฟล์เป็นตัวพิมพ์เล็กทั้งหมด ต้องตรงกันเป๊ะ เพราะโค้ดเรียกไฟล์ตามชื่อนี้):
    `code.gs`, `index.html`, `stylesheet.html`, `javascript.html`
@@ -63,7 +69,10 @@ Web app สำหรับจัดการคิวงานพิมพ์ 3D
    - Select type: **Web app**
    - Execute as: **Me** (ทุกคนเขียนลง sheet เดียวกันได้โดยไม่ต้องแชร์สิทธิ์ sheet)
    - Who has access: เลือกตามต้องการ (เช่น Anyone with Google account หรือเฉพาะในองค์กร)
-7. กด Deploy แล้วคัดลอก Web app URL ไปใช้งาน (bookmark ไว้ในเครื่อง / มือถือได้เลย)
+7. ครั้งแรกจะมีหน้าขอสิทธิ์ (Authorize access) ให้กดอนุญาตการเข้าถึง Google Sheets
+   (ถ้าขึ้น "Google hasn't verified this app" ให้กด Advanced > Go to ... (unsafe) ได้ เพราะเป็น
+   script ของเราเอง)
+8. กด Deploy แล้วคัดลอก Web app URL ไปใช้งาน (bookmark ไว้ในเครื่อง / มือถือได้เลย)
 
 > แก้โค้ดภายหลัง: กด **Deploy > Manage deployments > Edit > Version: New version**
 > เพื่อให้ URL เดิมใช้โค้ดใหม่
@@ -73,7 +82,7 @@ Web app สำหรับจัดการคิวงานพิมพ์ 3D
 ```bash
 npm install -g @google/clasp
 clasp login
-clasp create --type sheets --title "3D Print Queue"
+clasp create --type webapp --title "3D Print Queue"
 # คัดลอกไฟล์ในโฟลเดอร์นี้ไปยังโฟลเดอร์โปรเจกต์ที่ clasp สร้าง แล้ว
 clasp push
 clasp deploy
