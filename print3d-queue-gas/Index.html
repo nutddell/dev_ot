@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <?!= include('Stylesheet'); ?>
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <h1>3D Print Queue</h1>
+      <p class="subtitle">จัดการคิวงานพิมพ์ 3D และสีเส้นพลาสติกประจำเครื่อง</p>
+    </header>
+
+    <nav class="tabs" role="tablist">
+      <button type="button" class="tab active" data-tab="dashboard">แดชบอร์ด</button>
+      <button type="button" class="tab" data-tab="queue">งานค้างพิมพ์ <span id="queue-count" class="badge">0</span></button>
+      <button type="button" class="tab" data-tab="done">พิมพ์เสร็จแล้ว <span id="done-count" class="badge muted">0</span></button>
+    </nav>
+
+    <div id="message" class="message" hidden></div>
+    <div id="loading" class="loading">กำลังโหลดข้อมูล...</div>
+
+    <!-- Dashboard: printers, their 4 colors and their pending jobs -->
+    <section id="tab-dashboard" class="tab-panel">
+      <div class="section-head">
+        <h2>เครื่องพิมพ์</h2>
+        <button type="button" id="add-printer-btn" class="btn-primary">+ เพิ่มเครื่องพิมพ์</button>
+      </div>
+      <p class="hint">คลิกที่ช่องสีเพื่อเลือกสี (บน Windows จะเปิดหน้าต่างเลือกสีของ Windows) — ระบบบันทึกทับสีเดิมให้อัตโนมัติ</p>
+      <div id="printer-grid" class="printer-grid"></div>
+      <p id="printer-empty" class="empty" hidden>ยังไม่มีเครื่องพิมพ์ กด "+ เพิ่มเครื่องพิมพ์" เพื่อเริ่มต้น</p>
+    </section>
+
+    <!-- Queue: add a job + all pending jobs -->
+    <section id="tab-queue" class="tab-panel" hidden>
+      <form id="job-form" class="card job-form">
+        <div class="field grow">
+          <label for="job-title">ชื่องาน <span class="req">*</span></label>
+          <input type="text" id="job-title" required placeholder="เช่น ฝาครอบกล่อง x2 สีดำ">
+        </div>
+        <div class="field">
+          <label for="job-printer">เครื่องพิมพ์ <span class="req">*</span></label>
+          <select id="job-printer" required></select>
+        </div>
+        <div class="field">
+          <button type="submit" id="job-submit" class="btn-primary">เพิ่มเข้าคิว</button>
+        </div>
+      </form>
+
+      <h2>รายการรวมงานค้างพิมพ์</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>#</th><th>ชื่องาน</th><th>เครื่องพิมพ์</th><th>เวลานำเข้า</th><th></th></tr>
+          </thead>
+          <tbody id="queue-body"></tbody>
+        </table>
+      </div>
+      <p id="queue-empty" class="empty" hidden>ไม่มีงานค้างพิมพ์</p>
+    </section>
+
+    <!-- Done -->
+    <section id="tab-done" class="tab-panel" hidden>
+      <h2>รายการงานที่พิมพ์เสร็จ</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>ชื่องาน</th><th>เครื่องพิมพ์</th><th>เวลานำเข้า</th><th>เวลาพิมพ์เสร็จ</th></tr>
+          </thead>
+          <tbody id="done-body"></tbody>
+        </table>
+      </div>
+      <p id="done-empty" class="empty" hidden>ยังไม่มีงานที่พิมพ์เสร็จ</p>
+    </section>
+  </div>
+
+  <?!= include('JavaScript'); ?>
+</body>
+</html>
