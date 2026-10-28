@@ -87,6 +87,11 @@ clasp deploy
 
 ## การปรับแต่งที่อาจต้องทำเพิ่ม
 
+- **โลโก้ด้านบน**: ดึงจาก Google Drive (ไฟล์ `1TCIgIjY4dLXY08wZIjGq2cNA7bv19rIx`) ผ่าน
+  `https://lh3.googleusercontent.com/d/<FILE_ID>=h300` ซึ่งเป็นภาพย่อสูง 300px โหลดเร็วกว่าไฟล์จริง
+  — ไฟล์ต้องแชร์แบบ **"ทุกคนที่มีลิงก์"** ไว้เสมอ ถ้าเปลี่ยนโลโก้ ให้แก้ FILE_ID ใน `<img class="app-logo">`
+  ใน `index.html` / ปรับขนาดที่ `.app-logo` (PC 112px, notebook 96px, mobile 72px)
+
 - **เปลี่ยนจำนวนช่องสีต่อเครื่อง**: แก้ `COLOR_SLOTS` ทั้งใน `code.gs` และ `index.html`
   และเพิ่มคอลัมน์ `Color N` ใน `PRINTER_HEADERS`
 - **เปลี่ยนรูปแบบเวลา**: แก้ `formatTime_` ใน `code.gs`

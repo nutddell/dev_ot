@@ -39,6 +39,18 @@
   }
 
   .app-header { text-align: center; margin-bottom: 16px; }
+  /* Height drives the size so square and wide logos both fit; the max-width
+     cap keeps a wide logo inside a phone screen. */
+  .app-logo {
+    display: block;
+    margin: 0 auto 4px;
+    height: 112px;
+    width: auto;
+    max-width: min(100%, 420px);
+    object-fit: contain;
+  }
+  @media (max-width: 1366px) { .app-logo { height: 96px; } }  /* notebook */
+  @media (max-width: 600px) { .app-logo { height: 72px; max-width: 80%; } }  /* mobile */
   .app-header h1 { color: var(--brand-900); font-size: 24px; margin: 8px 0 4px; }
   .subtitle { color: var(--muted); font-size: 14px; margin: 0; }
 
@@ -231,6 +243,11 @@
 <body>
   <div class="app">
     <header class="app-header">
+      <!-- Logo is served from Google Drive (file must stay shared "Anyone with the link").
+           =h300 asks Drive for a 300px-tall copy instead of the 1.5 MB original. -->
+      <img class="app-logo" alt="3D Print Queue logo"
+           src="https://lh3.googleusercontent.com/d/1TCIgIjY4dLXY08wZIjGq2cNA7bv19rIx=h300"
+           onerror="this.hidden = true">
       <h1>3D Print Queue</h1>
       <p class="subtitle">จัดการคิวงานพิมพ์ 3D และสีเส้นพลาสติกประจำเครื่อง</p>
     </header>
