@@ -6,10 +6,10 @@ Web app สำหรับจัดการคิวงานพิมพ์ 3D
 ## โครงสร้างไฟล์
 
 - `appsscript.json` — manifest ของโปรเจกต์
-- `Code.gs` — server-side logic (เพิ่ม/ลบเครื่อง, บันทึกสี, เพิ่มงาน, ย้ายงานไปพิมพ์เสร็จ)
-- `Index.html` — หน้าเว็บหลัก (แท็บ แดชบอร์ด / งานค้างพิมพ์ / พิมพ์เสร็จแล้ว)
-- `Stylesheet.html` — CSS โทนสีส้ม
-- `JavaScript.html` — client-side script
+- `code.gs` — server-side logic (เพิ่ม/ลบเครื่อง, บันทึกสี, เพิ่มงาน, ย้ายงานไปพิมพ์เสร็จ)
+- `index.html` — หน้าเว็บหลัก (แท็บ แดชบอร์ด / งานค้างพิมพ์ / พิมพ์เสร็จแล้ว)
+- `stylesheet.html` — CSS โทนสีส้ม
+- `javascript.html` — client-side script
 
 ## ฟีเจอร์
 
@@ -53,8 +53,9 @@ Web app สำหรับจัดการคิวงานพิมพ์ 3D
 
 1. สร้าง Google Sheet ใหม่ — นี่จะเป็นฐานข้อมูล
 2. เปิด **Extensions > Apps Script**
-3. ลบไฟล์ `Code.gs` เริ่มต้น แล้วสร้างไฟล์ต่อไปนี้ (ใช้ชื่อไฟล์ให้ตรงกัน):
-   `Code.gs`, `Index.html`, `Stylesheet.html`, `JavaScript.html`
+3. เปลี่ยนชื่อไฟล์ `Code.gs` เริ่มต้นเป็น `code.gs` แล้วสร้างไฟล์ต่อไปนี้
+   (ชื่อไฟล์เป็นตัวพิมพ์เล็กทั้งหมด ต้องตรงกันเป๊ะ เพราะโค้ดเรียกไฟล์ตามชื่อนี้):
+   `code.gs`, `index.html`, `stylesheet.html`, `javascript.html`
 4. คัดลอกเนื้อหาจากไฟล์ในโฟลเดอร์นี้ไปวางในแต่ละไฟล์ (ไฟล์ `.html` ให้สร้างเป็น HTML file)
 5. เปิด **Project Settings** > ติ๊ก "Show appsscript.json manifest file" แล้วแก้ให้ตรงกับ
    `appsscript.json` ในโฟลเดอร์นี้ (timezone `Asia/Bangkok` ใช้สำหรับแสดงเวลา)
@@ -80,7 +81,7 @@ clasp deploy
 
 ## การปรับแต่งที่อาจต้องทำเพิ่ม
 
-- **เปลี่ยนจำนวนช่องสีต่อเครื่อง**: แก้ `COLOR_SLOTS` ทั้งใน `Code.gs` และ `JavaScript.html`
+- **เปลี่ยนจำนวนช่องสีต่อเครื่อง**: แก้ `COLOR_SLOTS` ทั้งใน `code.gs` และ `javascript.html`
   และเพิ่มคอลัมน์ `Color N` ใน `PRINTER_HEADERS`
-- **เปลี่ยนรูปแบบเวลา**: แก้ `formatTime_` ใน `Code.gs`
-- **ความถี่ในการ refresh อัตโนมัติ**: แก้ `REFRESH_MS` ใน `JavaScript.html`
+- **เปลี่ยนรูปแบบเวลา**: แก้ `formatTime_` ใน `code.gs`
+- **ความถี่ในการ refresh อัตโนมัติ**: แก้ `REFRESH_MS` ใน `javascript.html`
