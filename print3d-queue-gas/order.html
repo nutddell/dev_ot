@@ -422,7 +422,7 @@
       <button type="button" data-filter="active" class="active">กำลังดำเนินการ <span data-count="active"></span></button>
       <button type="button" data-filter="design">🟨 รอการออกแบบ <span data-count="design"></span></button>
       <button type="button" data-filter="ready">🟩 ส่งเข้าคิวพิมพ์งาน <span data-count="ready"></span></button>
-      <button type="button" data-filter="queued">เข้าคิวแล้ว <span data-count="queued"></span></button>
+      <button type="button" data-filter="queued">ส่งพิมพ์แล้ว <span data-count="queued"></span></button>
       <button type="button" data-filter="all">ทั้งหมด <span data-count="all"></span></button>
     </div>
     <div id="loading" class="loading">กำลังโหลดข้อมูล...</div>
@@ -437,7 +437,7 @@
     // picking plain black/white still fires a `change` event.
     var EMPTY_PICKER_VALUE = '#808081';
     var REFRESH_MS = 60000;
-    var STATUS_LABEL = { design: 'รอการออกแบบ', ready: 'ส่งเข้าคิวพิมพ์งาน', queued: 'เข้าคิวแล้ว' };
+    var STATUS_LABEL = { design: 'รอการออกแบบ', ready: 'ส่งเข้าคิวพิมพ์งาน', queued: 'ส่งพิมพ์แล้ว' };
 
     var state = { orders: [], pending: [], printing: [], done: [] };
     var filter = 'active';
@@ -587,7 +587,7 @@
         var stage = jobStage(order.jobId);
         statusArea = el('div', {
           className: 'queued-info',
-          text: '✓ เข้าคิวพิมพ์แล้ว · เครื่อง ' + order.printerName + (stage ? ' · ' + stage : '')
+          text: '✓ ส่งพิมพ์แล้ว · เครื่อง ' + order.printerName + (stage ? ' · ' + stage : '')
         });
       } else {
         statusArea = el('div', { className: 'seg' }, ['design', 'ready'].map(function (status) {
@@ -600,7 +600,7 @@
               e.currentTarget.disabled = true;
               call('updateOrderStatus', [order.id, status], function (ok) {
                 if (ok) showMessage('เปลี่ยนสถานะเป็น "' + STATUS_LABEL[status] + '" แล้ว' +
-                  (status === 'ready' ? ' — ไปกดเพิ่มเข้าคิวได้ที่หน้าคิวงานพิมพ์ แท็บงานค้างพิมพ์' : ''), 'success');
+                  (status === 'ready' ? ' — เข้าไปรอในงานค้างพิมพ์แล้ว' : ' — นำออกจากงานค้างพิมพ์แล้ว'), 'success');
               });
             }
           });
@@ -657,7 +657,7 @@
         btn.disabled = false;
         if (!ok) return;
         showMessage('บันทึกคำสั่งงาน "' + order.type + ': ' + order.detail + '" แล้ว' +
-          (order.status === 'ready' ? ' — รอเพิ่มเข้าคิวที่หน้าคิวงานพิมพ์' : ''), 'success');
+          (order.status === 'ready' ? ' — เข้าไปรอในงานค้างพิมพ์แล้ว' : ''), 'success');
         $('order-detail').value = '';
         formColors = ['', '', '', ''];
         renderFormColors();

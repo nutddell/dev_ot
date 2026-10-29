@@ -21,11 +21,11 @@ var DONE_HEADERS = ['Job ID', 'Job', 'Printer Name', 'Added At', 'Done At', 'Sta
 
 var ORDER_SHEET = 'Orders';
 var ORDER_HEADERS = ['Order ID', 'Date', 'Type', 'Detail', 'Color 1', 'Color 2', 'Color 3', 'Color 4',
-  'Status', 'Created At', 'Job ID', 'Printer Name'];
+  'Status', 'Created At', 'Job ID', 'Printer Name', 'Ready At'];
 
 var ORDER_TYPES = ['พวงกุญแจ', 'Key cap', 'อื่นๆ'];
-// design = รอการออกแบบ (yellow), ready = ส่งเข้าคิวพิมพ์งาน (green),
-// queued = already added to the print queue from the pending page.
+// design = รอการออกแบบ (yellow), ready = ส่งเข้าคิวพิมพ์งาน (green) — shows up in the
+// print queue's pending list right away, queued = sent to a printer from that list.
 var ORDER_STATUSES = ['design', 'ready', 'queued'];
 
 var COLOR_SLOTS = 4;
@@ -76,7 +76,7 @@ function moveToTimeZone_(ss) {
   timestampColumns[PRINTER_SHEET] = [7];
   timestampColumns[QUEUE_SHEET] = [5, 6];
   timestampColumns[DONE_SHEET] = [4, 5, 6];
-  timestampColumns[ORDER_SHEET] = [10];
+  timestampColumns[ORDER_SHEET] = [10, 13];
 
   var pending = [];
   Object.keys(timestampColumns).forEach(function (name) {
@@ -263,7 +263,10 @@ function getData() {
         status: row[8],
         createdAtMs: toMillis_(row[9]),
         jobId: row[10],
-        printerName: row[11]
+        printerName: row[11],
+        // Orders marked ready before the Ready At column existed fall back to Created At.
+        readyAt: formatTime_(row[12] || row[9]),
+        readyAtMs: toMillis_(row[12] || row[9])
       };
     })
     .sort(function (a, b) {
@@ -339,6 +342,8 @@ function startJob(jobId) {
     var startedCell = sheet.getRange(rowNum, 6);
     if (startedCell.getValue()) throw new Error('งานนี้เริ่มพิมพ์ไปแล้ว');
     startedCell.setValue(new Date());
+    // The column was added after the sheet existed and may carry a date-only format.
+    startedCell.setNumberFormat('dd/MM/yyyy HH:mm:ss');
   });
   return getData();
 }
@@ -370,7 +375,7 @@ function completeJob(jobId) {
 
 /** Removes a queued job without recording it as done (e.g. added by mistake). */
 /** Removes a queued job without recording it as done (e.g. added by mistake).
- *  A job that came from an order puts that order back on the ready list. */
+ *  A job that came from an order goes back to ready, i.e. back into the pending list. */
 function deleteJob(jobId) {
   withLock_(function () {
     var sheet = getSheet_(QUEUE_SHEET, QUEUE_HEADERS);
@@ -412,7 +417,8 @@ function addOrder(order) {
   if (status !== 'design' && status !== 'ready') throw new Error('กรุณาเลือกสถานะ');
   withLock_(function () {
     getSheet_(ORDER_SHEET, ORDER_HEADERS).appendRow(
-      [Utilities.getUuid(), date, type, detail].concat(readOrderColors_(order.colors), [status, new Date(), '', '']));
+      [Utilities.getUuid(), date, type, detail].concat(readOrderColors_(order.colors),
+        [status, new Date(), '', '', status === 'ready' ? new Date() : '']));
   });
   return getData();
 }
@@ -429,8 +435,11 @@ function updateOrderStatus(orderId, status) {
   if (status !== 'design' && status !== 'ready') throw new Error('สถานะไม่ถูกต้อง');
   withLock_(function () {
     var found = findOrder_(orderId);
-    if (found.status === 'queued') throw new Error('คำสั่งงานนี้ถูกเพิ่มเข้าคิวพิมพ์แล้ว เปลี่ยนสถานะไม่ได้');
+    if (found.status === 'queued') throw new Error('คำสั่งงานนี้ถูกส่งพิมพ์แล้ว เปลี่ยนสถานะไม่ได้');
+    if (found.status === status) return;
     found.sheet.getRange(found.rowNum, 9).setValue(status);
+    // Ready At = when it joined the pending list, so it queues behind earlier jobs.
+    found.sheet.getRange(found.rowNum, 13).setValue(status === 'ready' ? new Date() : '');
   });
   return getData();
 }
@@ -447,18 +456,18 @@ function updateOrderColors(orderId, colors) {
 function deleteOrder(orderId) {
   withLock_(function () {
     var found = findOrder_(orderId);
-    if (found.status === 'queued') throw new Error('คำสั่งงานนี้ถูกเพิ่มเข้าคิวพิมพ์แล้ว ลบไม่ได้');
+    if (found.status === 'queued') throw new Error('คำสั่งงานนี้ถูกส่งพิมพ์แล้ว ลบไม่ได้');
     found.sheet.deleteRow(found.rowNum);
   });
   return getData();
 }
 
-/** Ready (green) order -> pending print job on the chosen printer. */
-function queueOrder(orderId, printerId) {
-  if (!printerId) throw new Error('กรุณาเลือกเครื่องพิมพ์');
+/** Ready (green) order in the pending list -> printing on the chosen printer. */
+function printOrder(orderId, printerId) {
+  if (!printerId) throw new Error('กรุณาเลือกเครื่องพิมพ์ก่อนกดพิมพ์งาน');
   withLock_(function () {
     var found = findOrder_(orderId);
-    if (found.status !== 'ready') throw new Error('คำสั่งงานนี้ไม่ได้อยู่ในสถานะส่งเข้าคิวพิมพ์งาน (อาจถูกเพิ่มไปแล้ว)');
+    if (found.status !== 'ready') throw new Error('คำสั่งงานนี้ไม่ได้อยู่ในสถานะส่งเข้าคิวพิมพ์งาน (อาจถูกส่งพิมพ์ไปแล้ว)');
     var order = found.sheet.getRange(found.rowNum, 1, 1, ORDER_HEADERS.length).getValues()[0];
 
     var printerSheet = getSheet_(PRINTER_SHEET, PRINTER_HEADERS);
@@ -467,8 +476,11 @@ function queueOrder(orderId, printerId) {
     var printerName = printerSheet.getRange(printerRow, 2).getValue();
 
     var jobId = Utilities.getUuid();
-    getSheet_(QUEUE_SHEET, QUEUE_HEADERS).appendRow(
-      [jobId, order[2] + ': ' + order[3], printerId, printerName, new Date(), '', orderId]);
+    var queueSheet = getSheet_(QUEUE_SHEET, QUEUE_HEADERS);
+    // Added At = when the order became ready (it has been waiting in the pending list since).
+    queueSheet.appendRow([jobId, order[2] + ': ' + order[3], printerId, printerName,
+      order[12] || order[9] || new Date(), new Date(), orderId]);
+    queueSheet.getRange(queueSheet.getLastRow(), 6).setNumberFormat('dd/MM/yyyy HH:mm:ss');
     found.sheet.getRange(found.rowNum, 9).setValue('queued');
     found.sheet.getRange(found.rowNum, 11, 1, 2).setValues([[jobId, printerName]]);
   });
