@@ -51,8 +51,60 @@ function doGet(e) {
 
 // ---- Sheet helpers ----
 
-function getSheet_(name, headers) {
+var lockHeld_ = false;
+
+/** Opens the spreadsheet, first moving it to TIME_ZONE if it is still on another zone. */
+function openSpreadsheet_() {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  if (ss.getSpreadsheetTimeZone() !== TIME_ZONE) {
+    if (lockHeld_) moveToTimeZone_(ss);
+    else withLock_(function () { moveToTimeZone_(ss); });
+  }
+  return ss;
+}
+
+/**
+ * Sheets stores date-times as wall-clock values in the spreadsheet's time zone, so just
+ * switching the zone would shift every existing row by the zone difference. Read the
+ * timestamps first (as real instants), switch the zone, then write them back.
+ */
+function moveToTimeZone_(ss) {
+  var oldZone = ss.getSpreadsheetTimeZone();
+  if (oldZone === TIME_ZONE) return; // another request already did it
+  // 1-based columns holding timestamps in each sheet.
+  var timestampColumns = {};
+  timestampColumns[PRINTER_SHEET] = [7];
+  timestampColumns[QUEUE_SHEET] = [5, 6];
+  timestampColumns[DONE_SHEET] = [4, 5, 6];
+  timestampColumns[ORDER_SHEET] = [10];
+
+  var pending = [];
+  Object.keys(timestampColumns).forEach(function (name) {
+    var sheet = ss.getSheetByName(name);
+    if (!sheet || sheet.getLastRow() <= 1) return;
+    var rows = sheet.getLastRow() - 1;
+    timestampColumns[name].forEach(function (col) {
+      pending.push({ range: sheet.getRange(2, col, rows, 1), values: sheet.getRange(2, col, rows, 1).getValues() });
+    });
+    if (name === ORDER_SHEET) {
+      // Order dates are calendar days, not instants: keep the same day as text.
+      var dateRange = sheet.getRange(2, 2, rows, 1);
+      pending.push({
+        range: dateRange,
+        values: dateRange.getValues().map(function (row) {
+          return [row[0] instanceof Date ? Utilities.formatDate(row[0], oldZone, 'yyyy-MM-dd') : row[0]];
+        })
+      });
+    }
+  });
+
+  ss.setSpreadsheetTimeZone(TIME_ZONE);
+  SpreadsheetApp.flush();
+  pending.forEach(function (item) { item.range.setValues(item.values); });
+}
+
+function getSheet_(name, headers) {
+  var ss = openSpreadsheet_();
   var sheet = ss.getSheetByName(name);
   if (!sheet) {
     sheet = ss.insertSheet(name);
@@ -88,9 +140,11 @@ function findRow_(sheet, id) {
 function withLock_(fn) {
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
+  lockHeld_ = true;
   try {
     return fn();
   } finally {
+    lockHeld_ = false;
     lock.releaseLock();
   }
 }
@@ -197,7 +251,7 @@ function getData() {
     })
     .sort(function (a, b) { return b.doneAtMs - a.doneAtMs; });
 
-  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var ss = openSpreadsheet_();
   var orders = getRows_(getSheet_(ORDER_SHEET, ORDER_HEADERS), ORDER_HEADERS.length)
     .map(function (row) {
       return {
