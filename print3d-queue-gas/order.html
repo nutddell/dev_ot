@@ -184,6 +184,9 @@
     padding: 0;
   }
   .swatch.saving { opacity: 0.5; }
+  .swatch.static { cursor: default; }
+  .swatch.static.empty::after { content: none; }
+  .slot-type { font-size: 11px; color: var(--text); text-align: center; line-height: 1.2; }
   .color-label { font-size: 11px; color: var(--muted); font-family: Consolas, monospace; }
   .color-clear {
     border: none;
@@ -214,37 +217,11 @@
   .page-nav a { padding: 6px 16px; border-radius: 999px; color: var(--muted); text-decoration: none; font-size: 14px; }
   .page-nav a:hover { color: var(--brand-700); }
   .page-nav a.active { background: var(--brand-500); color: var(--white); }
+  @media (max-width: 480px) { .page-nav a { padding: 6px 9px; font-size: 13px; } }
 
-  /* ---- Pending tab: form + table on the left, ready orders on the right ---- */
-  .pending-layout:not([hidden]) {
-    display: grid;
-    grid-template-columns: 1fr;
-    grid-template-areas: "form" "orders" "table";
-    gap: 0 18px;
-  }
-  @media (min-width: 900px) {
-    .pending-layout:not([hidden]) {
-      grid-template-columns: minmax(0, 1fr) 320px;
-      grid-template-areas: "form orders" "table orders";
-      align-items: start;
-    }
-  }
-  .pending-layout .job-form { grid-area: form; }
-  .pending-layout .pending-table { grid-area: table; }
-  .order-panel { grid-area: orders; background: var(--white); border: 1px solid var(--border);
-                 border-top: 4px solid var(--ready); border-radius: 12px; padding: 4px 14px 10px; margin-top: 16px; }
-  @media (min-width: 900px) { .order-panel { margin-top: 0; } }
-  .order-panel h2 { display: flex; align-items: center; gap: 8px; margin: 12px 0 4px; }
-  .badge.ready { background: var(--ready); }
-  .ready-list { list-style: none; margin: 0; padding: 0; }
-  .ready-list li { padding: 10px 0; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
-  .ready-list li:last-child { border-bottom: none; }
-  .ready-list .none { color: var(--muted); font-size: 13px; text-align: center; }
-  .ready-list .order-title { font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
-  .ready-list .order-meta { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
-  .ready-list .order-queue { display: flex; gap: 6px; }
-  .ready-list select { flex: 1; min-width: 0; font-size: 14px; padding: 6px 8px; }
-  .ready-list .btn-start { padding: 6px 10px; font-size: 13px; }
+  .printer-pick { min-width: 0; width: 100%; max-width: 160px; font-size: 14px; padding: 6px 8px; }
+  .job-list .printer-pick { width: auto; }
+  .from-order { margin-right: 4px; }
   .order-dots { display: inline-flex; gap: 3px; vertical-align: middle; margin-left: 6px; }
   .order-dots .dot { width: 12px; height: 12px; }
 
@@ -269,6 +246,11 @@
   .job-list .job-title { display: block; font-weight: 600; overflow-wrap: anywhere; }
   .job-list .job-meta { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
   .job-list .job-actions button { padding: 6px 10px; font-size: 13px; }
+  .job-list .job-actions { display: flex; gap: 6px; align-items: center; }
+  @media (max-width: 600px) {
+    .job-list li { flex-wrap: wrap; }
+    .job-list .job-actions { width: 100%; justify-content: flex-end; }
+  }
   .job-list .none { color: var(--muted); font-size: 13px; justify-content: center; }
   .printer-foot { display: flex; justify-content: flex-end; }
 
@@ -378,6 +360,7 @@
       <nav class="page-nav">
         <a href="<?= appUrl ?>" target="_top">🖨️ คิวงานพิมพ์</a>
         <a class="active" href="<?= appUrl ?>?page=order" target="_top">📝 คำสั่งงาน</a>
+        <a href="<?= appUrl ?>?page=manage" target="_top">⚙️ การจัดการระบบ</a>
       </nav>
     </header>
 

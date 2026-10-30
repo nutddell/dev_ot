@@ -28,6 +28,15 @@ var ORDER_TYPES = ['พวงกุญแจ', 'Key cap', 'อื่นๆ'];
 // print queue's pending list right away, queued = sent to a printer from that list.
 var ORDER_STATUSES = ['design', 'ready', 'queued'];
 
+var STOCK_SHEET = 'Stock';
+var STOCK_HEADERS = ['Stock ID', 'Type', 'Color Code', 'Color', 'Quantity', 'Created At', 'Updated At'];
+
+// Common FDM filament materials.
+var FILAMENT_TYPES = [
+  'PLA', 'PLA+', 'PLA Matte', 'PLA Silk', 'PLA-CF', 'PETG', 'PETG-CF', 'ABS', 'ASA',
+  'TPU', 'PC', 'PA (Nylon)', 'PVA', 'HIPS', 'อื่นๆ'
+];
+
 var COLOR_SLOTS = 4;
 
 // NATO phonetic alphabet, used to auto-name printers.
@@ -38,13 +47,21 @@ var PRINTER_NAMES = [
   'X-ray', 'Yankee', 'Zulu'
 ];
 
-/** ?page=order opens the order page; anything else opens the print queue. */
+var PAGE_TITLES = {
+  index: '3D Print Queue',
+  order: 'คำสั่งงาน - 3D Print Queue',
+  manage: 'การจัดการระบบ - 3D Print Queue',
+  stock: 'สต๊อก Filament - 3D Print Queue'
+};
+
+/** ?page=order|manage|stock opens that page; anything else opens the print queue. */
 function doGet(e) {
-  var page = e && e.parameter && e.parameter.page === 'order' ? 'order' : 'index';
+  var requested = e && e.parameter && e.parameter.page;
+  var page = PAGE_TITLES.hasOwnProperty(requested) ? requested : 'index';
   var template = HtmlService.createTemplateFromFile(page);
   template.appUrl = ScriptApp.getService().getUrl();
   return template.evaluate()
-    .setTitle(page === 'order' ? 'คำสั่งงาน - 3D Print Queue' : '3D Print Queue')
+    .setTitle(PAGE_TITLES[page])
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
@@ -77,6 +94,7 @@ function moveToTimeZone_(ss) {
   timestampColumns[QUEUE_SHEET] = [5, 6];
   timestampColumns[DONE_SHEET] = [4, 5, 6];
   timestampColumns[ORDER_SHEET] = [10, 13];
+  timestampColumns[STOCK_SHEET] = [6, 7];
 
   var pending = [];
   Object.keys(timestampColumns).forEach(function (name) {
@@ -205,12 +223,39 @@ function printerNameOrder_(name) {
  * Dates are pre-formatted because google.script.run cannot return Date objects.
  */
 function getData() {
-  var printers = getRows_(getSheet_(PRINTER_SHEET, PRINTER_HEADERS), PRINTER_HEADERS.length)
+  var stock = getRows_(getSheet_(STOCK_SHEET, STOCK_HEADERS), STOCK_HEADERS.length)
     .map(function (row) {
       return {
         id: row[0],
+        type: row[1],
+        code: row[2] === '' || row[2] === null ? '' : row[2].toString(),
+        color: normalizeColor_(row[3]),
+        qty: Number(row[4]) || 0,
+        updatedAt: formatTime_(row[6] || row[5])
+      };
+    })
+    .sort(function (a, b) {
+      var byType = FILAMENT_TYPES.indexOf(a.type) - FILAMENT_TYPES.indexOf(b.type);
+      return byType || (a.code < b.code ? -1 : a.code > b.code ? 1 : 0);
+    });
+  var stockById = {};
+  stock.forEach(function (item) { stockById[item.id] = item; });
+
+  var printers = getRows_(getSheet_(PRINTER_SHEET, PRINTER_HEADERS), PRINTER_HEADERS.length)
+    .map(function (row) {
+      // A color slot holds a Stock ID. Hex values typed in before the stock page existed
+      // are still shown (legacy: true) until the slot is picked from stock.
+      var slots = row.slice(2, 2 + COLOR_SLOTS).map(function (value) {
+        var item = stockById[value];
+        if (item) return { stockId: item.id, color: item.color, type: item.type, code: item.code };
+        var hex = normalizeColor_(value);
+        return hex ? { stockId: '', color: hex, type: '', code: '', legacy: true } : null;
+      });
+      return {
+        id: row[0],
         name: row[1],
-        colors: row.slice(2, 2 + COLOR_SLOTS).map(normalizeColor_)
+        slots: slots,
+        colors: slots.map(function (slot) { return slot ? slot.color : ''; })
       };
     })
     .sort(function (a, b) { return printerNameOrder_(a.name) - printerNameOrder_(b.name); });
@@ -273,7 +318,10 @@ function getData() {
       return a.date === b.date ? b.createdAtMs - a.createdAtMs : (a.date < b.date ? 1 : -1);
     });
 
-  return { printers: printers, pending: pending, printing: printing, done: done, orders: orders };
+  return {
+    printers: printers, pending: pending, printing: printing, done: done, orders: orders,
+    stock: stock, filamentTypes: FILAMENT_TYPES
+  };
 }
 
 // ---- Printers ----
@@ -290,12 +338,22 @@ function addPrinter() {
   return getData();
 }
 
-/** Overwrites all 4 color slots of a printer. Empty string = slot unused. */
-function updatePrinterColors(printerId, colors) {
-  colors = colors || [];
-  var values = [];
-  for (var i = 0; i < COLOR_SLOTS; i++) values.push(normalizeColor_(colors[i]));
+/**
+ * Overwrites all 4 color slots of a printer. Each value is a Stock ID, '' (unused), or a
+ * legacy hex color being kept as it was.
+ */
+function updatePrinterColors(printerId, slots) {
+  slots = slots || [];
   withLock_(function () {
+    var stockIds = getRows_(getSheet_(STOCK_SHEET, STOCK_HEADERS), 1).map(function (row) { return row[0]; });
+    var values = [];
+    for (var i = 0; i < COLOR_SLOTS; i++) {
+      var value = (slots[i] || '').toString();
+      if (value && stockIds.indexOf(value) === -1 && !normalizeColor_(value)) {
+        throw new Error('ไม่พบสีนี้ในสต๊อก (อาจถูกลบไปแล้ว) กรุณาเลือกใหม่');
+      }
+      values.push(stockIds.indexOf(value) !== -1 ? value : normalizeColor_(value));
+    }
     var sheet = getSheet_(PRINTER_SHEET, PRINTER_HEADERS);
     var rowNum = findRow_(sheet, printerId);
     if (rowNum === -1) throw new Error('ไม่พบเครื่องพิมพ์นี้ อาจถูกลบไปแล้ว');
@@ -483,6 +541,82 @@ function printOrder(orderId, printerId) {
     queueSheet.getRange(queueSheet.getLastRow(), 6).setNumberFormat('dd/MM/yyyy HH:mm:ss');
     found.sheet.getRange(found.rowNum, 9).setValue('queued');
     found.sheet.getRange(found.rowNum, 11, 1, 2).setValues([[jobId, printerName]]);
+  });
+  return getData();
+}
+
+// ---- Filament stock ----
+
+/** item: { type, code, color: '#rrggbb', qty } */
+function readStockItem_(item) {
+  item = item || {};
+  var type = (item.type || '').toString().trim();
+  var code = (item.code || '').toString().trim();
+  var color = normalizeColor_(item.color);
+  var qty = Number(item.qty);
+  if (FILAMENT_TYPES.indexOf(type) === -1) throw new Error('กรุณาเลือกชนิดของ filament');
+  if (!code) throw new Error('กรุณากรอกรหัสสีจากกล่อง');
+  if (!color) throw new Error('รหัสสีไม่ถูกต้อง (ต้องเป็นรูปแบบ #RRGGBB)');
+  if (!(qty >= 0) || Math.floor(qty) !== qty) throw new Error('จำนวนต้องเป็นจำนวนเต็มตั้งแต่ 0 ขึ้นไป');
+  return { type: type, code: code, color: color, qty: qty };
+}
+
+/** Same material + same box code = the same filament; its quantity should be adjusted instead. */
+function assertNoDuplicateStock_(sheet, item, exceptId) {
+  var duplicate = getRows_(sheet, 3).some(function (row) {
+    return row[0] !== exceptId && row[1] === item.type &&
+      row[2].toString().trim().toLowerCase() === item.code.toLowerCase();
+  });
+  if (duplicate) throw new Error(item.type + ' รหัส ' + item.code + ' มีอยู่ในสต๊อกแล้ว — ปรับจำนวนที่รายการเดิมแทน');
+}
+
+function addStock(item) {
+  item = readStockItem_(item);
+  withLock_(function () {
+    var sheet = getSheet_(STOCK_SHEET, STOCK_HEADERS);
+    assertNoDuplicateStock_(sheet, item, null);
+    var now = new Date();
+    // Prefix with ' so codes like "0012" or "1/2" stay text instead of becoming numbers/dates.
+    sheet.appendRow([Utilities.getUuid(), item.type, "'" + item.code, item.color, item.qty, now, now]);
+  });
+  return getData();
+}
+
+function updateStock(stockId, item) {
+  item = readStockItem_(item);
+  withLock_(function () {
+    var sheet = getSheet_(STOCK_SHEET, STOCK_HEADERS);
+    var rowNum = findRow_(sheet, stockId);
+    if (rowNum === -1) throw new Error('ไม่พบรายการนี้ในสต๊อก (อาจถูกลบไปแล้ว)');
+    assertNoDuplicateStock_(sheet, item, stockId);
+    sheet.getRange(rowNum, 2, 1, 4).setValues([[item.type, "'" + item.code, item.color, item.qty]]);
+    sheet.getRange(rowNum, 7).setValue(new Date());
+  });
+  return getData();
+}
+
+/** +1 / -1 buttons; never goes below 0. */
+function adjustStock(stockId, delta) {
+  withLock_(function () {
+    var sheet = getSheet_(STOCK_SHEET, STOCK_HEADERS);
+    var rowNum = findRow_(sheet, stockId);
+    if (rowNum === -1) throw new Error('ไม่พบรายการนี้ในสต๊อก (อาจถูกลบไปแล้ว)');
+    var qty = (Number(sheet.getRange(rowNum, 5).getValue()) || 0) + (Number(delta) || 0);
+    sheet.getRange(rowNum, 5).setValue(Math.max(0, qty));
+    sheet.getRange(rowNum, 7).setValue(new Date());
+  });
+  return getData();
+}
+
+function deleteStock(stockId) {
+  withLock_(function () {
+    var users = getRows_(getSheet_(PRINTER_SHEET, PRINTER_HEADERS), 2 + COLOR_SLOTS)
+      .filter(function (row) { return row.slice(2).indexOf(stockId) !== -1; })
+      .map(function (row) { return row[1]; });
+    if (users.length) throw new Error('สีนี้ใช้อยู่กับเครื่อง ' + users.join(', ') + ' — เปลี่ยนสีของเครื่องก่อนลบ');
+    var sheet = getSheet_(STOCK_SHEET, STOCK_HEADERS);
+    var rowNum = findRow_(sheet, stockId);
+    if (rowNum !== -1) sheet.deleteRow(rowNum);
   });
   return getData();
 }

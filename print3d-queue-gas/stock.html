@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+<style>
+  :root {
+    --brand-900: #3a1d06;
+    --brand-700: #9a4a0b;
+    --brand-600: #c75f0e;
+    --brand-500: #e8731a;
+    --brand-100: #fdebdc;
+    --bg: #faf7f4;
+    --text: #2a2420;
+    --muted: #776a60;
+    --border: #e8ddd3;
+    --success: #1f8a4c;
+    --printing: #2563eb;
+    --printing-50: #eef4ff;
+    --ready: #16a34a;
+    --ready-50: #ecfdf3;
+    --design: #eab308;
+    --design-50: #fefce8;
+    --danger: #c0392b;
+    --white: #ffffff;
+  }
+
+  * { box-sizing: border-box; }
+
+  /* Elements with `display` set in this stylesheet would otherwise override
+     the native [hidden] attribute. */
+  [hidden] { display: none !important; }
+
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', Sarabun, Tahoma, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  .app {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 24px 16px 48px;
+  }
+
+  .app-header { text-align: center; margin-bottom: 16px; }
+  /* Height drives the size so square and wide logos both fit; the max-width
+     cap keeps a wide logo inside a phone screen. */
+  .app-logo {
+    display: block;
+    margin: 0 auto 4px;
+    height: 112px;
+    width: auto;
+    max-width: min(100%, 420px);
+    object-fit: contain;
+  }
+  @media (max-width: 1366px) { .app-logo { height: 96px; } }  /* notebook */
+  @media (max-width: 600px) { .app-logo { height: 72px; max-width: 80%; } }  /* mobile */
+  .app-header h1 { color: var(--brand-900); font-size: 24px; margin: 8px 0 4px; }
+  .subtitle { color: var(--muted); font-size: 14px; margin: 0; }
+
+  h2 { font-size: 17px; color: var(--brand-900); margin: 20px 0 10px; }
+
+  /* ---- Tabs ---- */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 16px;
+    overflow-x: auto;
+  }
+  .tab {
+    border: none;
+    background: none;
+    padding: 10px 16px;
+    font: inherit;
+    font-size: 15px;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    white-space: nowrap;
+  }
+  .tab:hover { color: var(--brand-700); }
+  .tab.active { color: var(--brand-700); border-bottom-color: var(--brand-500); font-weight: 600; }
+
+  .badge {
+    display: inline-block;
+    min-width: 22px;
+    padding: 1px 7px;
+    border-radius: 11px;
+    background: var(--brand-500);
+    color: var(--white);
+    font-size: 12px;
+    text-align: center;
+  }
+  .badge.muted { background: #b9aca1; }
+  .badge.printing { background: var(--printing); }
+
+  /* ---- Buttons ---- */
+  button { font: inherit; }
+  .btn-primary, .btn-done, .btn-start, .btn-ghost {
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 8px 14px;
+  }
+  .btn-primary { background: var(--brand-500); color: var(--white); border: 1px solid var(--brand-600); }
+  .btn-primary:hover { background: var(--brand-600); }
+  .btn-done { background: var(--success); color: var(--white); border: none; white-space: nowrap; }
+  .btn-done:hover { filter: brightness(0.92); }
+  .btn-start { background: var(--printing); color: var(--white); border: none; white-space: nowrap; }
+  .btn-start:hover { filter: brightness(0.92); }
+  .btn-ghost { background: none; border: 1px solid var(--border); color: var(--muted); padding: 6px 10px; }
+  .btn-ghost:hover { color: var(--danger); border-color: var(--danger); }
+  button:disabled { opacity: 0.55; cursor: wait; }
+
+  /* ---- Messages ---- */
+  .message { padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; font-size: 14px; }
+  .message.error { background: #fdecea; color: var(--danger); border: 1px solid #f5c6c0; }
+  .message.success { background: #e7f6ed; color: var(--success); border: 1px solid #bfe5cd; }
+  .loading { text-align: center; color: var(--muted); padding: 24px; }
+  .hint { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+  .empty { color: var(--muted); text-align: center; padding: 24px; background: var(--white);
+           border: 1px dashed var(--border); border-radius: 10px; }
+
+  .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .section-head h2 { margin: 8px 0; }
+
+  /* ---- Printer cards ---- */
+  .printer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+  }
+  .printer-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .printer-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .printer-name { font-size: 18px; font-weight: 700; color: var(--brand-900); }
+  .printer-count { font-size: 13px; color: var(--muted); }
+
+  .colors { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .color-slot { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .swatch {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    max-width: 56px;
+    border-radius: 10px;
+    border: 2px solid rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+  }
+  .swatch.empty {
+    border: 2px dashed #cbbcae;
+    background: repeating-linear-gradient(45deg, #fff, #fff 5px, #f3ece6 5px, #f3ece6 10px);
+  }
+  .swatch.empty::after {
+    content: '+';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #b9aca1;
+    font-size: 22px;
+  }
+  /* The native picker sits invisibly on top of the swatch so a click opens it. */
+  .swatch input[type="color"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    border: none;
+    padding: 0;
+  }
+  .swatch.saving { opacity: 0.5; }
+  .swatch.static { cursor: default; }
+  .swatch.static.empty::after { content: none; }
+  .slot-type { font-size: 11px; color: var(--text); text-align: center; line-height: 1.2; }
+  .color-label { font-size: 11px; color: var(--muted); font-family: Consolas, monospace; }
+  .color-clear {
+    border: none;
+    background: none;
+    color: var(--muted);
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+  }
+  .color-clear:hover { color: var(--danger); }
+
+  .printer-card.is-printing { border-color: var(--printing); box-shadow: 0 0 0 1px var(--printing); }
+  .status-pill { font-size: 12px; padding: 2px 10px; border-radius: 11px; white-space: nowrap; }
+  .status-pill.printing { background: var(--printing); color: var(--white); }
+  .status-pill.idle { background: #ece5df; color: var(--muted); }
+  .printer-status { font-size: 14px; display: flex; flex-direction: column; gap: 4px;
+                    border-top: 1px solid var(--border); padding-top: 10px; overflow-wrap: anywhere; }
+  .muted { color: var(--muted); font-size: 13px; }
+
+  .dash-actions { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+  a.btn-link { display: inline-block; text-decoration: none; }
+  @media (max-width: 600px) { .dash-actions a.btn-link { width: 100%; text-align: center; padding: 10px 14px; } }
+
+  /* ---- Page links (queue / orders) ---- */
+  .page-nav { display: inline-flex; gap: 4px; margin-top: 12px; padding: 4px;
+              background: var(--white); border: 1px solid var(--border); border-radius: 999px; }
+  .page-nav a { padding: 6px 16px; border-radius: 999px; color: var(--muted); text-decoration: none; font-size: 14px; }
+  .page-nav a:hover { color: var(--brand-700); }
+  .page-nav a.active { background: var(--brand-500); color: var(--white); }
+  @media (max-width: 480px) { .page-nav a { padding: 6px 9px; font-size: 13px; } }
+
+  .printer-pick { min-width: 0; width: 100%; max-width: 160px; font-size: 14px; padding: 6px 8px; }
+  .job-list .printer-pick { width: auto; }
+  .from-order { margin-right: 4px; }
+  .order-dots { display: inline-flex; gap: 3px; vertical-align: middle; margin-left: 6px; }
+  .order-dots .dot { width: 12px; height: 12px; }
+
+  /* ---- Dashboard monitor (printing / pending lists) ---- */
+  .monitor { display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 8px; }
+  @media (min-width: 900px) { .monitor { grid-template-columns: 1fr 1fr; align-items: start; } }
+  .monitor-col { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 4px 14px 8px; }
+  .monitor-col.printing { border-top: 4px solid var(--printing); background: var(--printing-50); }
+  .monitor-col.pending { border-top: 4px solid var(--brand-500); }
+  .monitor-col h2 { margin: 12px 0 6px; display: flex; align-items: center; gap: 8px; }
+  .job-list { list-style: none; margin: 0; padding: 0; }
+  .job-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .job-list li:last-child { border-bottom: none; }
+  .job-list .job-text { flex: 1; min-width: 0; }
+  .job-list .job-title { display: block; font-weight: 600; overflow-wrap: anywhere; }
+  .job-list .job-meta { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .job-list .job-actions button { padding: 6px 10px; font-size: 13px; }
+  .job-list .job-actions { display: flex; gap: 6px; align-items: center; }
+  @media (max-width: 600px) {
+    .job-list li { flex-wrap: wrap; }
+    .job-list .job-actions { width: 100%; justify-content: flex-end; }
+  }
+  .job-list .none { color: var(--muted); font-size: 13px; justify-content: center; }
+  .printer-foot { display: flex; justify-content: flex-end; }
+
+  /* ---- Job form ---- */
+  .card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .job-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field.grow { flex: 1 1 260px; }
+  .field label { font-size: 13px; color: var(--muted); }
+  .req { color: var(--danger); }
+  input[type="text"], select {
+    font: inherit;
+    font-size: 15px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--white);
+    min-width: 160px;
+  }
+  input[type="text"]:focus, select:focus { outline: 2px solid var(--brand-100); border-color: var(--brand-500); }
+
+  /* ---- Tables ---- */
+  .table-wrap { overflow-x: auto; background: var(--white); border: 1px solid var(--border); border-radius: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  th { background: var(--brand-100); color: var(--brand-900); font-weight: 600; white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: none; }
+  td.nowrap { white-space: nowrap; }
+  td.actions { white-space: nowrap; text-align: right; }
+  td.actions button + button { margin-left: 6px; }
+  .printer-chip { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .dots { display: inline-flex; gap: 2px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.2); }
+
+  @media (max-width: 600px) {
+    .job-form .field, .job-form select, .job-form button { width: 100%; }
+    .tabs { display: grid; grid-template-columns: 1fr 1fr; overflow: visible; }
+    .tab { padding: 10px 6px; font-size: 14px; }
+
+    /* Tables become one card per row so the action buttons stay on screen. */
+    .table-wrap { background: none; border: none; overflow: visible; }
+    table thead { display: none; }
+    table, tbody, tr, td { display: block; width: 100%; }
+    tbody tr { background: var(--white); border: 1px solid var(--border); border-radius: 12px;
+               padding: 6px 12px; margin-bottom: 10px; }
+    td { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0;
+         border-bottom: 1px dashed var(--border); text-align: right; }
+    td::before { content: attr(data-label); color: var(--muted); font-size: 13px; text-align: left; }
+    td.actions { justify-content: flex-end; border-bottom: none; padding-top: 10px; }
+    td.actions::before { content: none; }
+  }
+
+  /* ---- Shared by manage / stock pages ---- */
+  .back-link { display: inline-block; margin-bottom: 12px; color: var(--brand-700); text-decoration: none; font-size: 14px; }
+  .back-link:hover { text-decoration: underline; }
+  .chip { display: inline-block; width: 26px; height: 26px; border-radius: 7px; border: 1px solid rgba(0, 0, 0, 0.2);
+          vertical-align: middle; flex: none; }
+
+  /* ---- Stock page ---- */
+  .stock-form { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  @media (min-width: 760px) {
+    .stock-form { grid-template-columns: 180px 1fr 260px 120px; align-items: end; }
+    .stock-form .span-all { grid-column: 1 / -1; }
+  }
+  .stock-form input[type="text"], .stock-form input[type="number"], .stock-form select { width: 100%; min-width: 0; }
+  input[type="number"] { font: inherit; font-size: 15px; padding: 8px 10px; border: 1px solid var(--border);
+                         border-radius: 8px; background: var(--white); }
+  .color-input { display: flex; align-items: center; gap: 8px; }
+  .color-input .swatch { width: 42px; height: 42px; max-width: none; aspect-ratio: auto; flex: none; }
+  .color-input input[type="text"] { font-family: Consolas, monospace; text-transform: uppercase; }
+  .form-actions { display: flex; justify-content: flex-end; gap: 8px; }
+  .edit-banner { background: var(--design-50); border: 1px solid var(--design); color: #8a6100;
+                 border-radius: 8px; padding: 8px 12px; font-size: 14px; }
+
+  .stock-tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin: 4px 0 10px; }
+  .stock-summary { color: var(--muted); font-size: 14px; }
+  .qty { display: inline-flex; align-items: center; gap: 6px; }
+  .qty button { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border); background: var(--white);
+                cursor: pointer; font-size: 16px; line-height: 1; }
+  .qty button:hover { border-color: var(--brand-500); color: var(--brand-700); }
+  .qty strong { min-width: 28px; text-align: center; }
+  .out-badge { font-size: 11px; background: var(--danger); color: var(--white); border-radius: 10px; padding: 1px 8px; }
+  tr.out td { background: #fff6f5; }
+  .hex { font-family: Consolas, monospace; font-size: 13px; }
+  .btn-small { padding: 5px 10px; font-size: 13px; }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <img class="app-logo" alt="3D Print Queue logo"
+           src="https://lh3.googleusercontent.com/d/1TCIgIjY4dLXY08wZIjGq2cNA7bv19rIx=h300"
+           onerror="this.hidden = true">
+      <h1>สต๊อก Filament</h1>
+      <p class="subtitle">บันทึกจำนวน filament แต่ละชนิด / สี ที่มีอยู่</p>
+      <nav class="page-nav">
+        <a href="<?= appUrl ?>" target="_top">🖨️ คิวงานพิมพ์</a>
+        <a href="<?= appUrl ?>?page=order" target="_top">📝 คำสั่งงาน</a>
+        <a class="active" href="<?= appUrl ?>?page=manage" target="_top">⚙️ การจัดการระบบ</a>
+      </nav>
+    </header>
+
+    <a class="back-link" href="<?= appUrl ?>?page=manage" target="_top">← กลับหน้าการจัดการระบบ</a>
+    <div id="message" class="message" hidden></div>
+
+    <form id="stock-form" class="card stock-form">
+      <div id="edit-banner" class="edit-banner span-all" hidden></div>
+      <div class="field">
+        <label for="stock-type">ชนิดของ filament <span class="req">*</span></label>
+        <select id="stock-type" required><option value="">กำลังโหลด...</option></select>
+      </div>
+      <div class="field">
+        <label for="stock-code">รหัสสี (จากกล่อง) <span class="req">*</span></label>
+        <input type="text" id="stock-code" required placeholder="เช่น 10101 / BK-01">
+      </div>
+      <div class="field">
+        <label for="stock-hex">สี (เลือกเฉดสี หรือใส่รหัส) <span class="req">*</span></label>
+        <div class="color-input">
+          <label class="swatch" id="stock-swatch" title="คลิกเพื่อเลือกสี">
+            <input type="color" id="stock-picker" value="#000000">
+          </label>
+          <input type="text" id="stock-hex" required placeholder="#000000" maxlength="7" value="#000000">
+        </div>
+      </div>
+      <div class="field">
+        <label for="stock-qty">จำนวน (ม้วน) <span class="req">*</span></label>
+        <input type="number" id="stock-qty" required min="0" step="1" value="1">
+      </div>
+      <div class="form-actions span-all">
+        <button type="button" id="stock-cancel" class="btn-ghost" hidden>ยกเลิกการแก้ไข</button>
+        <button type="submit" id="stock-submit" class="btn-primary">+ เพิ่มเข้าสต๊อก</button>
+      </div>
+    </form>
+
+    <h2>รายการสต๊อก</h2>
+    <div class="stock-tools">
+      <span id="stock-summary" class="stock-summary"></span>
+      <select id="stock-filter" aria-label="กรองตามชนิด"><option value="">ทุกชนิด</option></select>
+    </div>
+    <div id="loading" class="loading">กำลังโหลดข้อมูล...</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>สี</th><th>ชนิด</th><th>รหัสสี</th><th>รหัส HEX</th><th>จำนวน (ม้วน)</th><th>ใช้กับเครื่อง</th><th></th></tr>
+        </thead>
+        <tbody id="stock-body"></tbody>
+      </table>
+    </div>
+    <p id="stock-empty" class="empty" hidden>ยังไม่มีข้อมูลในสต๊อก</p>
+  </div>
+
+<script>
+  (function () {
+    var REFRESH_MS = 60000;
+    var state = { stock: [], printers: [], filamentTypes: [] };
+    var editingId = null;
+    var busy = 0;
+
+    // ---- Helpers ----
+
+    function $(id) { return document.getElementById(id); }
+
+    function el(tag, props, children) {
+      var node = document.createElement(tag);
+      Object.keys(props || {}).forEach(function (key) {
+        if (key === 'className') node.className = props[key];
+        else if (key === 'text') node.textContent = props[key];
+        else if (key === 'style') node.setAttribute('style', props[key]);
+        else if (key.indexOf('on') === 0) node.addEventListener(key.slice(2), props[key]);
+        else node.setAttribute(key, props[key]);
+      });
+      (children || []).forEach(function (child) {
+        if (child) node.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
+      });
+      return node;
+    }
+
+    var messageTimer = null;
+    function showMessage(text, type) {
+      var box = $('message');
+      box.textContent = text;
+      box.className = 'message ' + type;
+      box.hidden = false;
+      clearTimeout(messageTimer);
+      messageTimer = setTimeout(function () { box.hidden = true; }, type === 'error' ? 8000 : 3000);
+    }
+
+    /** Every server function returns the fresh getData() payload, so the page re-renders from it. */
+    function call(fnName, args, onDone) {
+      busy++;
+      var runner = google.script.run
+        .withSuccessHandler(function (data) {
+          busy--;
+          render(data);
+          if (onDone) onDone(true);
+        })
+        .withFailureHandler(function (err) {
+          busy--;
+          showMessage(err.message || String(err), 'error');
+          if (onDone) onDone(false);
+        });
+      runner[fnName].apply(runner, args || []);
+    }
+
+    /** Accepts "#abc", "abc", "#aabbcc" or "aabbcc"; returns "#aabbcc" or ''. */
+    function parseHex(text) {
+      var v = (text || '').trim().replace(/^#/, '').toLowerCase();
+      if (/^[0-9a-f]{3}$/.test(v)) v = v.replace(/./g, '$&$&');
+      return /^[0-9a-f]{6}$/.test(v) ? '#' + v : '';
+    }
+
+    function setColor(hex) {
+      $('stock-hex').value = hex.toUpperCase();
+      $('stock-picker').value = hex;
+      $('stock-swatch').style.background = hex;
+    }
+
+    /** Printer names whose color slots use this stock item. */
+    function usedBy(stockId) {
+      return state.printers.filter(function (p) {
+        return p.slots.some(function (slot) { return slot && slot.stockId === stockId; });
+      }).map(function (p) { return p.name; });
+    }
+
+    // ---- Rendering ----
+
+    function fillTypeSelects() {
+      var select = $('stock-type');
+      if (select.dataset.filled) return;
+      select.dataset.filled = '1';
+      select.innerHTML = '';
+      select.appendChild(el('option', { value: '', text: '-- เลือกชนิด --' }));
+      state.filamentTypes.forEach(function (t) {
+        select.appendChild(el('option', { value: t, text: t }));
+        $('stock-filter').appendChild(el('option', { value: t, text: t }));
+      });
+    }
+
+    function render(data) {
+      state = data;
+      $('loading').hidden = true;
+      fillTypeSelects();
+      var total = data.stock.reduce(function (sum, s) { return sum + s.qty; }, 0);
+      var out = data.stock.filter(function (s) { return s.qty === 0; }).length;
+      $('stock-summary').textContent = 'ทั้งหมด ' + data.stock.length + ' รายการ · รวม ' + total + ' ม้วน' +
+        (out ? ' · หมด ' + out + ' รายการ' : '');
+      renderTable();
+    }
+
+    function renderTable() {
+      var filter = $('stock-filter').value;
+      var items = state.stock.filter(function (s) { return !filter || s.type === filter; });
+      var body = $('stock-body');
+      body.innerHTML = '';
+      $('stock-empty').hidden = items.length > 0;
+      var labels = Array.prototype.map.call(document.querySelectorAll('thead th'), function (th) { return th.textContent; });
+      items.forEach(function (item) {
+        var users = usedBy(item.id);
+        var cells = [
+          el('td', {}, [el('span', { className: 'chip', style: 'background:' + item.color })]),
+          el('td', { text: item.type }),
+          el('td', { text: item.code }),
+          el('td', { className: 'hex', text: item.color.toUpperCase() }),
+          el('td', {}, [el('span', { className: 'qty' }, [
+            el('button', { type: 'button', text: '−', title: 'ลด 1 ม้วน', onclick: adjust(item, -1) }),
+            el('strong', { text: String(item.qty) }),
+            el('button', { type: 'button', text: '+', title: 'เพิ่ม 1 ม้วน', onclick: adjust(item, 1) }),
+            item.qty === 0 ? el('span', { className: 'out-badge', text: 'หมด' }) : null
+          ])]),
+          el('td', { text: users.length ? users.join(', ') : '-' }),
+          el('td', { className: 'actions' }, [
+            el('button', { type: 'button', className: 'btn-ghost btn-small', text: 'แก้ไข', onclick: function () { startEdit(item); } }),
+            el('button', {
+              type: 'button', className: 'btn-ghost btn-small', text: 'ลบ',
+              onclick: function (e) {
+                if (!confirm('ลบ ' + item.type + ' รหัส ' + item.code + ' ออกจากสต๊อก?')) return;
+                var btn = e.currentTarget;
+                btn.disabled = true;
+                call('deleteStock', [item.id], function (ok) {
+                  if (ok) showMessage('ลบ ' + item.type + ' รหัส ' + item.code + ' แล้ว', 'success');
+                  else btn.disabled = false;
+                });
+              }
+            })
+          ])
+        ];
+        cells.forEach(function (td, c) { if (labels[c]) td.setAttribute('data-label', labels[c]); });
+        body.appendChild(el('tr', { className: item.qty === 0 ? 'out' : '' }, cells));
+      });
+    }
+
+    function adjust(item, delta) {
+      return function (e) {
+        if (delta < 0 && item.qty === 0) return;
+        e.currentTarget.disabled = true;
+        call('adjustStock', [item.id, delta]);
+      };
+    }
+
+    // ---- Form ----
+
+    function startEdit(item) {
+      editingId = item.id;
+      $('stock-type').value = item.type;
+      $('stock-code').value = item.code;
+      setColor(item.color);
+      $('stock-qty').value = item.qty;
+      $('edit-banner').textContent = 'กำลังแก้ไข: ' + item.type + ' รหัส ' + item.code;
+      $('edit-banner').hidden = false;
+      $('stock-cancel').hidden = false;
+      $('stock-submit').textContent = 'บันทึกการแก้ไข';
+      $('stock-form').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function resetForm() {
+      editingId = null;
+      $('stock-code').value = '';
+      $('stock-qty').value = 1;
+      $('edit-banner').hidden = true;
+      $('stock-cancel').hidden = true;
+      $('stock-submit').textContent = '+ เพิ่มเข้าสต๊อก';
+    }
+
+    $('stock-picker').addEventListener('input', function () { setColor(this.value); });
+    $('stock-hex').addEventListener('input', function () {
+      var hex = parseHex(this.value);
+      if (hex) {
+        $('stock-picker').value = hex;
+        $('stock-swatch').style.background = hex;
+      }
+    });
+    $('stock-hex').addEventListener('blur', function () {
+      var hex = parseHex(this.value);
+      if (hex) setColor(hex);
+    });
+    $('stock-filter').addEventListener('change', renderTable);
+    $('stock-cancel').addEventListener('click', resetForm);
+
+    $('stock-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var hex = parseHex($('stock-hex').value);
+      if (!hex) {
+        showMessage('รหัสสีไม่ถูกต้อง — ใส่เป็น #RRGGBB เช่น #FF0000 หรือเลือกจากช่องสี', 'error');
+        $('stock-hex').focus();
+        return;
+      }
+      var item = {
+        type: $('stock-type').value,
+        code: $('stock-code').value.trim(),
+        color: hex,
+        qty: Number($('stock-qty').value)
+      };
+      var btn = $('stock-submit');
+      btn.disabled = true;
+      var wasEditing = editingId;
+      call(wasEditing ? 'updateStock' : 'addStock', wasEditing ? [wasEditing, item] : [item], function (ok) {
+        btn.disabled = false;
+        if (!ok) return;
+        showMessage((wasEditing ? 'บันทึกการแก้ไข ' : 'เพิ่ม ') + item.type + ' รหัส ' + item.code + ' แล้ว', 'success');
+        resetForm();
+        $('stock-code').focus();
+      });
+    });
+
+    setColor('#000000');
+
+    setInterval(function () {
+      if (busy === 0 && !document.hidden) call('getData');
+    }, REFRESH_MS);
+
+    call('getData');
+  })();
+</script>
+</body>
+</html>

@@ -18,6 +18,9 @@
     --printing: #2563eb;
     --printing-50: #eef4ff;
     --ready: #16a34a;
+    --ready-50: #ecfdf3;
+    --design: #eab308;
+    --design-50: #fefce8;
     --danger: #c0392b;
     --white: #ffffff;
   }
@@ -181,6 +184,9 @@
     padding: 0;
   }
   .swatch.saving { opacity: 0.5; }
+  .swatch.static { cursor: default; }
+  .swatch.static.empty::after { content: none; }
+  .slot-type { font-size: 11px; color: var(--text); text-align: center; line-height: 1.2; }
   .color-label { font-size: 11px; color: var(--muted); font-family: Consolas, monospace; }
   .color-clear {
     border: none;
@@ -211,6 +217,7 @@
   .page-nav a { padding: 6px 16px; border-radius: 999px; color: var(--muted); text-decoration: none; font-size: 14px; }
   .page-nav a:hover { color: var(--brand-700); }
   .page-nav a.active { background: var(--brand-500); color: var(--white); }
+  @media (max-width: 480px) { .page-nav a { padding: 6px 9px; font-size: 13px; } }
 
   .printer-pick { min-width: 0; width: 100%; max-width: 160px; font-size: 14px; padding: 6px 8px; }
   .job-list .printer-pick { width: auto; }
@@ -310,6 +317,7 @@
       <nav class="page-nav">
         <a class="active" href="<?= appUrl ?>" target="_top">🖨️ คิวงานพิมพ์</a>
         <a href="<?= appUrl ?>?page=order" target="_top">📝 คำสั่งงาน</a>
+        <a href="<?= appUrl ?>?page=manage" target="_top">⚙️ การจัดการระบบ</a>
       </nav>
     </header>
 
@@ -341,11 +349,11 @@
 
       <div class="section-head">
         <h2>เครื่องพิมพ์</h2>
-        <button type="button" id="add-printer-btn" class="btn-primary">+ เพิ่มเครื่องพิมพ์</button>
+        <a class="btn-ghost btn-link" href="<?= appUrl ?>?page=manage" target="_top">⚙️ เพิ่มเครื่อง / ตั้งสี</a>
       </div>
-      <p class="hint">คลิกที่ช่องสีเพื่อเลือกสี (บน Windows จะเปิดหน้าต่างเลือกสีของ Windows) — ระบบบันทึกทับสีเดิมให้อัตโนมัติ</p>
+      <p class="hint">สีประจำเครื่องมาจากสต๊อก filament — เพิ่มเครื่องหรือเปลี่ยนสีได้ที่หน้า "การจัดการระบบ"</p>
       <div id="printer-grid" class="printer-grid"></div>
-      <p id="printer-empty" class="empty" hidden>ยังไม่มีเครื่องพิมพ์ กด "+ เพิ่มเครื่องพิมพ์" เพื่อเริ่มต้น</p>
+      <p id="printer-empty" class="empty" hidden>ยังไม่มีเครื่องพิมพ์ — เพิ่มได้ที่หน้า "การจัดการระบบ"</p>
     </section>
 
     <!-- Pending: add a job + all jobs waiting to print -->
@@ -408,10 +416,6 @@
 
 <script>
   (function () {
-    var COLOR_SLOTS = 4;
-    // Initial value of an unused slot's picker. Deliberately an odd shade so
-    // picking plain black/white still fires a `change` event.
-    var EMPTY_PICKER_VALUE = '#808081';
     var REFRESH_MS = 60000;
 
     var state = { printers: [], pending: [], printing: [], done: [], orders: [] };
@@ -678,8 +682,7 @@
         var printing = state.printing.filter(function (j) { return j.printerId === printer.id; });
         var pendingCount = state.pending.filter(function (j) { return j.printerId === printer.id; }).length;
 
-        var slots = [];
-        for (var i = 0; i < COLOR_SLOTS; i++) slots.push(colorSlot(printer, i));
+        var slots = printer.slots.map(slotView);
 
         grid.appendChild(el('div', { className: 'printer-card' + (printing.length ? ' is-printing' : '') }, [
           el('div', { className: 'printer-head' }, [
@@ -695,49 +698,22 @@
               ? [el('strong', { text: 'กำลังพิมพ์: ' }), printing.map(function (j) { return j.title; }).join(', ')]
               : [el('span', { className: 'muted', text: 'ไม่มีงานที่กำลังพิมพ์' })]),
             el('div', { className: 'muted', text: 'ค้างพิมพ์ ' + pendingCount + ' งาน' })
-          ]),
-          el('div', { className: 'printer-foot' }, [
-            actionButton('btn-ghost', 'ลบเครื่อง', 'deletePrinter', [printer.id],
-              'ลบเครื่อง ' + printer.name + ' แล้ว', 'ลบเครื่องพิมพ์ ' + printer.name + ' ?')
           ])
         ]));
       });
     }
 
-    function colorSlot(printer, index) {
-      var color = printer.colors[index];
-      var swatch = el('label', {
-        className: 'swatch' + (color ? '' : ' empty'),
-        style: color ? 'background:' + color : '',
-        title: color ? 'สี ' + (index + 1) + ': ' + color + ' (คลิกเพื่อเปลี่ยน)' : 'สี ' + (index + 1) + ': คลิกเพื่อเลือกสี'
-      });
-      var input = el('input', { type: 'color' });
-      input.value = color || EMPTY_PICKER_VALUE;
-      input.addEventListener('change', function () {
-        saveColor(printer, index, input.value, swatch);
-      });
-      swatch.appendChild(input);
-
-      var children = [swatch, el('span', { className: 'color-label', text: color ? color.toUpperCase() : 'ว่าง' })];
-      if (color) {
-        children.push(el('button', {
-          type: 'button',
-          className: 'color-clear',
-          text: 'ล้าง',
-          onclick: function () { saveColor(printer, index, '', swatch); }
-        }));
-      }
-      return el('div', { className: 'color-slot' }, children);
-    }
-
-    function saveColor(printer, index, value, swatch) {
-      var colors = printer.colors.slice();
-      colors[index] = value;
-      swatch.classList.add('saving');
-      call('updatePrinterColors', [printer.id, colors], function (ok) {
-        if (ok) showMessage('บันทึกสีของ ' + printer.name + ' แล้ว', 'success');
-        else swatch.classList.remove('saving');
-      });
+    /** Read-only color slot: the filament loaded in that slot (from stock). */
+    function slotView(slot) {
+      return el('div', { className: 'color-slot' }, [
+        el('div', {
+          className: 'swatch static' + (slot ? '' : ' empty'),
+          style: slot ? 'background:' + slot.color : '',
+          title: slot ? (slot.type ? slot.type + ' ' + slot.code + ' · ' : '') + slot.color : 'ว่าง'
+        }),
+        el('span', { className: 'slot-type', text: slot ? (slot.type || 'ไม่ได้ผูกสต๊อก') : 'ว่าง' }),
+        slot && slot.code ? el('span', { className: 'color-label', text: slot.code }) : null
+      ]);
     }
 
     function renderPrinterSelect() {
@@ -815,18 +791,6 @@
         document.querySelectorAll('.tab-panel').forEach(function (panel) {
           panel.hidden = panel.id !== 'tab-' + tab.dataset.tab;
         });
-      });
-    });
-
-    $('add-printer-btn').addEventListener('click', function () {
-      var btn = this;
-      btn.disabled = true;
-      call('addPrinter', [], function (ok) {
-        btn.disabled = false;
-        if (ok) {
-          var added = state.printers[state.printers.length - 1];
-          showMessage('เพิ่มเครื่อง ' + added.name + ' แล้ว — เลือกสีประจำเครื่องได้เลย', 'success');
-        }
       });
     });
 
