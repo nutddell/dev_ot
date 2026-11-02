@@ -312,7 +312,7 @@
   /* ---- Stock page ---- */
   .stock-form { display: grid; grid-template-columns: 1fr; gap: 14px; }
   @media (min-width: 760px) {
-    .stock-form { grid-template-columns: 180px 1fr 260px 120px; align-items: end; }
+    .stock-form { grid-template-columns: 150px 120px 1fr 240px 110px; align-items: end; }
     .stock-form .span-all { grid-column: 1 / -1; }
   }
   .stock-form input[type="text"], .stock-form input[type="number"], .stock-form select { width: 100%; min-width: 0; }
@@ -336,6 +336,43 @@
   tr.out td { background: #fff6f5; }
   .hex { font-family: Consolas, monospace; font-size: 13px; }
   .btn-small { padding: 5px 10px; font-size: 13px; }
+  .stock-tools .filters-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .muted-cell { color: var(--muted); }
+
+  /* Status toggle: green = พร้อมใช้, red = ใช้งาน */
+  .status-toggle { border: none; border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 13px;
+                   cursor: pointer; color: var(--white); white-space: nowrap; }
+  .status-toggle.ready { background: var(--ready); }
+  .status-toggle.in_use { background: var(--danger); }
+  .status-toggle:hover { filter: brightness(0.92); }
+  tr.in-use td { background: #fdf3f2; }
+  .printer-choices { list-style: none; margin: 0; padding: 10px 12px; display: grid;
+                     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; overflow-y: auto; }
+  .printer-choices button { width: 100%; padding: 12px 8px; border: 2px solid var(--border); border-radius: 10px;
+                            background: var(--white); cursor: pointer; font: inherit; font-weight: 600; }
+  .printer-choices button:hover { border-color: var(--danger); color: var(--danger); }
+  .printer-choices .sub { display: block; font-weight: 400; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .use-what { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+
+  /* ---- Stock picker dialog ---- */
+  .overlay { position: fixed; inset: 0; background: rgba(30, 20, 10, 0.45); display: flex;
+             align-items: center; justify-content: center; padding: 16px; z-index: 10; }
+  .dialog { background: var(--white); border-radius: 14px; width: 100%; max-width: 460px; max-height: 85vh;
+            display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25); }
+  .dialog-head { padding: 14px 16px 8px; border-bottom: 1px solid var(--border); }
+  .dialog-head h3 { margin: 0 0 8px; font-size: 16px; color: var(--brand-900); }
+  .dialog-head input { width: 100%; min-width: 0; }
+  .pick-list { list-style: none; margin: 0; padding: 6px 8px; overflow-y: auto; }
+  .pick-list button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px; border: 1px solid transparent;
+                      border-radius: 10px; background: none; cursor: pointer; font: inherit; text-align: left; color: var(--text); }
+  .pick-list button:hover { background: var(--brand-100); }
+  .pick-list button.current { border-color: var(--brand-500); }
+  .pick-list .pick-text { flex: 1; min-width: 0; }
+  .pick-list .pick-main { display: block; font-weight: 600; font-size: 14px; }
+  .pick-list .pick-sub { display: block; font-size: 12px; color: var(--muted); }
+  .pick-list .is-out .pick-main { color: var(--muted); }
+  .pick-list .none { color: var(--muted); text-align: center; padding: 16px; font-size: 14px; }
+  .dialog-foot { display: flex; justify-content: space-between; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--border); }
 </style>
 </head>
 <body>
@@ -363,6 +400,10 @@
         <select id="stock-type" required><option value="">กำลังโหลด...</option></select>
       </div>
       <div class="field">
+        <label for="stock-brand">ยี่ห้อ <span class="req">*</span></label>
+        <select id="stock-brand" required><option value="">กำลังโหลด...</option></select>
+      </div>
+      <div class="field">
         <label for="stock-code">รหัสสี (จากกล่อง) <span class="req">*</span></label>
         <input type="text" id="stock-code" required placeholder="เช่น 10101 / BK-01">
       </div>
@@ -388,13 +429,20 @@
     <h2>รายการสต๊อก</h2>
     <div class="stock-tools">
       <span id="stock-summary" class="stock-summary"></span>
-      <select id="stock-filter" aria-label="กรองตามชนิด"><option value="">ทุกชนิด</option></select>
+      <span class="filters-row">
+        <select id="status-filter" aria-label="กรองตามสถานะ">
+          <option value="">ทุกสถานะ</option>
+          <option value="ready">🟢 พร้อมใช้</option>
+          <option value="in_use">🔴 ใช้งาน</option>
+        </select>
+        <select id="stock-filter" aria-label="กรองตามชนิด"><option value="">ทุกชนิด</option></select>
+      </span>
     </div>
     <div id="loading" class="loading">กำลังโหลดข้อมูล...</div>
     <div class="table-wrap">
       <table>
         <thead>
-          <tr><th>สี</th><th>ชนิด</th><th>รหัสสี</th><th>รหัส HEX</th><th>จำนวน (ม้วน)</th><th>ใช้กับเครื่อง</th><th></th></tr>
+          <tr><th>สี</th><th>ชนิด</th><th>ยี่ห้อ</th><th>รหัสสี</th><th>รหัส HEX</th><th>จำนวน (ม้วน)</th><th>สถานะ</th><th>สีประจำเครื่อง</th><th></th></tr>
         </thead>
         <tbody id="stock-body"></tbody>
       </table>
@@ -402,10 +450,25 @@
     <p id="stock-empty" class="empty" hidden>ยังไม่มีข้อมูลในสต๊อก</p>
   </div>
 
+  <!-- พร้อมใช้ -> ใช้งาน: which printer is this roll going into? -->
+  <div id="use-dialog" class="overlay" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="use-title">
+      <div class="dialog-head">
+        <h3 id="use-title">นำไปใส่เครื่องไหน?</h3>
+        <div id="use-what" class="use-what"></div>
+      </div>
+      <ul id="printer-choices" class="printer-choices"></ul>
+      <div class="dialog-foot">
+        <span class="hint" style="margin:0">แยกออก 1 ม้วน เป็นสถานะ "ใช้งาน"</span>
+        <button type="button" id="use-cancel" class="btn-ghost">ยกเลิก</button>
+      </div>
+    </div>
+  </div>
+
 <script>
   (function () {
     var REFRESH_MS = 60000;
-    var state = { stock: [], printers: [], filamentTypes: [] };
+    var state = { stock: [], printers: [], printing: [], filamentTypes: [], filamentBrands: [] };
     var editingId = null;
     var busy = 0;
 
@@ -487,50 +550,68 @@
         select.appendChild(el('option', { value: t, text: t }));
         $('stock-filter').appendChild(el('option', { value: t, text: t }));
       });
+      var brand = $('stock-brand');
+      brand.innerHTML = '';
+      brand.appendChild(el('option', { value: '', text: '-- เลือกยี่ห้อ --' }));
+      state.filamentBrands.forEach(function (b) { brand.appendChild(el('option', { value: b, text: b })); });
+    }
+
+    function label(item) {
+      return item.type + (item.brand ? ' ' + item.brand : '') + ' รหัส ' + item.code;
     }
 
     function render(data) {
       state = data;
       $('loading').hidden = true;
       fillTypeSelects();
-      var total = data.stock.reduce(function (sum, s) { return sum + s.qty; }, 0);
-      var out = data.stock.filter(function (s) { return s.qty === 0; }).length;
-      $('stock-summary').textContent = 'ทั้งหมด ' + data.stock.length + ' รายการ · รวม ' + total + ' ม้วน' +
+      var ready = data.stock.filter(function (s) { return s.status === 'ready'; });
+      var readyRolls = ready.reduce(function (sum, s) { return sum + s.qty; }, 0);
+      var inUse = data.stock.length - ready.length;
+      var out = ready.filter(function (s) { return s.qty === 0; }).length;
+      $('stock-summary').textContent = '🟢 พร้อมใช้ ' + readyRolls + ' ม้วน · 🔴 ใช้งาน ' + inUse + ' ม้วน' +
         (out ? ' · หมด ' + out + ' รายการ' : '');
       renderTable();
+      if (usingItem) renderUseDialog();
     }
 
     function renderTable() {
       var filter = $('stock-filter').value;
-      var items = state.stock.filter(function (s) { return !filter || s.type === filter; });
+      var statusFilter = $('status-filter').value;
+      var items = state.stock.filter(function (s) {
+        return (!filter || s.type === filter) && (!statusFilter || s.status === statusFilter);
+      });
       var body = $('stock-body');
       body.innerHTML = '';
       $('stock-empty').hidden = items.length > 0;
       var labels = Array.prototype.map.call(document.querySelectorAll('thead th'), function (th) { return th.textContent; });
       items.forEach(function (item) {
         var users = usedBy(item.id);
+        var inUse = item.status === 'in_use';
         var cells = [
           el('td', {}, [el('span', { className: 'chip', style: 'background:' + item.color })]),
           el('td', { text: item.type }),
+          el('td', { className: item.brand ? '' : 'muted-cell', text: item.brand || '-' }),
           el('td', { text: item.code }),
           el('td', { className: 'hex', text: item.color.toUpperCase() }),
-          el('td', {}, [el('span', { className: 'qty' }, [
+          el('td', {}, [inUse ? el('strong', { text: '1' }) : el('span', { className: 'qty' }, [
             el('button', { type: 'button', text: '−', title: 'ลด 1 ม้วน', onclick: adjust(item, -1) }),
             el('strong', { text: String(item.qty) }),
             el('button', { type: 'button', text: '+', title: 'เพิ่ม 1 ม้วน', onclick: adjust(item, 1) }),
             item.qty === 0 ? el('span', { className: 'out-badge', text: 'หมด' }) : null
           ])]),
+          el('td', {}, [statusToggle(item)]),
           el('td', { text: users.length ? users.join(', ') : '-' }),
           el('td', { className: 'actions' }, [
             el('button', { type: 'button', className: 'btn-ghost btn-small', text: 'แก้ไข', onclick: function () { startEdit(item); } }),
             el('button', {
               type: 'button', className: 'btn-ghost btn-small', text: 'ลบ',
               onclick: function (e) {
-                if (!confirm('ลบ ' + item.type + ' รหัส ' + item.code + ' ออกจากสต๊อก?')) return;
+                if (!confirm(inUse ? 'ม้วน ' + label(item) + ' ที่ใช้งานอยู่กับ ' + item.printerName + ' ใช้หมดแล้ว — ลบออกจากสต๊อก?'
+                  : 'ลบ ' + label(item) + ' ออกจากสต๊อก?')) return;
                 var btn = e.currentTarget;
                 btn.disabled = true;
                 call('deleteStock', [item.id], function (ok) {
-                  if (ok) showMessage('ลบ ' + item.type + ' รหัส ' + item.code + ' แล้ว', 'success');
+                  if (ok) showMessage('ลบ ' + label(item) + ' แล้ว', 'success');
                   else btn.disabled = false;
                 });
               }
@@ -538,9 +619,76 @@
           ])
         ];
         cells.forEach(function (td, c) { if (labels[c]) td.setAttribute('data-label', labels[c]); });
-        body.appendChild(el('tr', { className: item.qty === 0 ? 'out' : '' }, cells));
+        body.appendChild(el('tr', { className: inUse ? 'in-use' : (item.qty === 0 ? 'out' : '') }, cells));
       });
     }
+
+    // ---- Status: พร้อมใช้ (green) <-> ใช้งาน (red) ----
+
+    var usingItem = null; // ready row whose roll is being put into a printer
+
+    function statusToggle(item) {
+      if (item.status === 'in_use') {
+        return el('button', {
+          type: 'button',
+          className: 'status-toggle in_use',
+          text: '🔴 ใช้งาน · ' + (item.printerName || '?'),
+          title: 'กดเพื่อนำม้วนนี้ออกจากเครื่อง กลับเป็นพร้อมใช้',
+          onclick: function (e) {
+            if (!confirm('นำ ' + label(item) + ' ออกจาก ' + item.printerName + ' กลับเป็น "พร้อมใช้"?')) return;
+            e.currentTarget.disabled = true;
+            call('returnStock', [item.id], function (ok) {
+              if (ok) showMessage(label(item) + ' กลับเป็นพร้อมใช้แล้ว', 'success');
+            });
+          }
+        });
+      }
+      return el('button', {
+        type: 'button',
+        className: 'status-toggle ready',
+        text: '🟢 พร้อมใช้',
+        title: 'กดเพื่อนำ 1 ม้วนไปใส่เครื่องพิมพ์',
+        onclick: function () {
+          if (item.qty < 1) { showMessage('ไม่มีม้วนคงเหลือ (จำนวน 0)', 'error'); return; }
+          if (!state.printers.length) { showMessage('ยังไม่มีเครื่องพิมพ์ — เพิ่มที่หน้าการจัดการระบบก่อน', 'error'); return; }
+          usingItem = item.id;
+          $('use-dialog').hidden = false;
+          renderUseDialog();
+        }
+      });
+    }
+
+    function closeUseDialog() {
+      usingItem = null;
+      $('use-dialog').hidden = true;
+    }
+
+    function renderUseDialog() {
+      var item = state.stock.filter(function (s) { return s.id === usingItem; })[0];
+      if (!item || item.status !== 'ready' || item.qty < 1) { closeUseDialog(); return; }
+      var what = $('use-what');
+      what.innerHTML = '';
+      what.appendChild(el('span', { className: 'chip', style: 'background:' + item.color }));
+      what.appendChild(el('span', { text: label(item) + ' (คงเหลือ ' + item.qty + ' ม้วน)' }));
+      var list = $('printer-choices');
+      list.innerHTML = '';
+      state.printers.forEach(function (printer) {
+        var loaded = state.stock.filter(function (s) { return s.status === 'in_use' && s.printerId === printer.id; }).length;
+        list.appendChild(el('li', {}, [el('button', {
+          type: 'button',
+          onclick: function () {
+            closeUseDialog();
+            call('useStock', [item.id, printer.id], function (ok) {
+              if (ok) showMessage('นำ ' + label(item) + ' ไปใส่ ' + printer.name + ' แล้ว', 'success');
+            });
+          }
+        }, [printer.name, el('span', { className: 'sub', text: loaded ? 'ใส่อยู่ ' + loaded + ' ม้วน' : 'ยังไม่มีม้วนที่ใช้งาน' })])]));
+      });
+    }
+
+    $('use-cancel').addEventListener('click', closeUseDialog);
+    $('use-dialog').addEventListener('click', function (e) { if (e.target === this) closeUseDialog(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && usingItem) closeUseDialog(); });
 
     function adjust(item, delta) {
       return function (e) {
@@ -555,10 +703,15 @@
     function startEdit(item) {
       editingId = item.id;
       $('stock-type').value = item.type;
+      $('stock-brand').value = item.brand;
       $('stock-code').value = item.code;
       setColor(item.color);
       $('stock-qty').value = item.qty;
-      $('edit-banner').textContent = 'กำลังแก้ไข: ' + item.type + ' รหัส ' + item.code;
+      // An in-use row is always one roll.
+      $('stock-qty').disabled = item.status === 'in_use';
+      $('edit-banner').textContent = 'กำลังแก้ไข: ' + label(item) +
+        (item.status === 'in_use' ? ' (ใช้งานอยู่กับ ' + item.printerName + ')' : '') +
+        (item.brand ? '' : ' — รายการเก่ายังไม่มียี่ห้อ กรุณาเลือก');
       $('edit-banner').hidden = false;
       $('stock-cancel').hidden = false;
       $('stock-submit').textContent = 'บันทึกการแก้ไข';
@@ -569,6 +722,7 @@
       editingId = null;
       $('stock-code').value = '';
       $('stock-qty').value = 1;
+      $('stock-qty').disabled = false;
       $('edit-banner').hidden = true;
       $('stock-cancel').hidden = true;
       $('stock-submit').textContent = '+ เพิ่มเข้าสต๊อก';
@@ -587,6 +741,7 @@
       if (hex) setColor(hex);
     });
     $('stock-filter').addEventListener('change', renderTable);
+    $('status-filter').addEventListener('change', renderTable);
     $('stock-cancel').addEventListener('click', resetForm);
 
     $('stock-form').addEventListener('submit', function (e) {
@@ -599,6 +754,7 @@
       }
       var item = {
         type: $('stock-type').value,
+        brand: $('stock-brand').value,
         code: $('stock-code').value.trim(),
         color: hex,
         qty: Number($('stock-qty').value)
@@ -609,7 +765,7 @@
       call(wasEditing ? 'updateStock' : 'addStock', wasEditing ? [wasEditing, item] : [item], function (ok) {
         btn.disabled = false;
         if (!ok) return;
-        showMessage((wasEditing ? 'บันทึกการแก้ไข ' : 'เพิ่ม ') + item.type + ' รหัส ' + item.code + ' แล้ว', 'success');
+        showMessage((wasEditing ? 'บันทึกการแก้ไข ' : 'เพิ่ม ') + label(item) + ' แล้ว', 'success');
         resetForm();
         $('stock-code').focus();
       });
@@ -618,7 +774,7 @@
     setColor('#000000');
 
     setInterval(function () {
-      if (busy === 0 && !document.hidden) call('getData');
+      if (busy === 0 && !document.hidden && !usingItem) call('getData');
     }, REFRESH_MS);
 
     call('getData');
